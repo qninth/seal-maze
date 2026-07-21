@@ -64,14 +64,14 @@ const TILE = 0;
 const WALL = 1;
 const GOAL = 2;
 
-// 海豹物理（调优：更顺滑、有阻尼惯性感）
+// 海豹物理（慢速滚动：降速+强阻尼，突出"滚动"而非"冲锋"）
 const SEAL_R = 0.34;       // 海豹半径（格子单位）
-const MAX_SPEED = 0.15;    // 最大速度（略降，更可控）
-const FRICTION = 0.985;    // 摩擦（提高→滑行更长，有阻尼感而非急停）
-const ACCEL = 0.0028;      // 基础加速度系数
-const BOUNCE = 0.3;        // 碰墙弹性（略降，避免乱弹）
-const TILT_DEAD = 3;       // 体感死区（度），消除静止抖动
-const TILT_SOFT = 25;      // 体感柔和区（度），此范围内力度递增
+const MAX_SPEED = 0.075;   // 最大速度（大幅降低，看清滚动过程）
+const FRICTION = 0.96;     // 摩擦（适中，松手会缓慢滑停）
+const ACCEL = 0.0015;      // 基础加速度（降低，启动更从容）
+const BOUNCE = 0.25;       // 碰墙弹性（柔和弹回）
+const TILT_DEAD = 3;       // 体感死区（度）
+const TILT_SOFT = 25;      // 体感柔和区（度）
 const INPUT_SMOOTH = 0.25; // 输入低通滤波系数（越小越平滑，0.1-0.4）
 // 兼容旧引用
 const TILT_K = ACCEL;
@@ -502,15 +502,15 @@ function step(dt){
     moveAxis(sx, 0);
     moveAxis(0, sy);
   }
-  // 旋转（根据位移）
-  seal.angle += sp * 0.3;
+  // 旋转（根据位移，系数放大让慢速滚动也有明显转动感）
+  seal.angle += sp * 0.8;
 
-  // 拖尾
-  if(sp>0.01){
+  // 拖尾（降低门槛，慢速也留痕，突出滚动轨迹）
+  if(sp>0.005){
     trail.push({x:seal.x,y:seal.y,life:1});
-    if(trail.length>30) trail.shift();
+    if(trail.length>40) trail.shift();
   }
-  for(const t of trail) t.life -= 0.04;
+  for(const t of trail) t.life -= 0.03;
   trail = trail.filter(t=>t.life>0);
 
   // 粒子
@@ -532,11 +532,7 @@ function moveAxis(dx, dy){
   const nx = seal.x + dx, ny = seal.y + dy;
   // 碰撞检测：圆形对网格墙
   if(circleHitsWall(nx, ny)){
-    // 碰撞：弹回 + 粒子
-    if(Math.abs(dx)>0.005 || Math.abs(dy)>0.005){
-      spawnImpact(nx, ny);
-      shakeT = 0.15;
-    }
+    // 碰撞：仅弹回（去掉火花粒子和屏幕震动）
     if(dx!==0) seal.vx *= -BOUNCE;
     if(dy!==0) seal.vy *= -BOUNCE;
     return false;

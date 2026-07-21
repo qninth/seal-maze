@@ -551,6 +551,8 @@ function spawnImpact(x,y){
 
 // ====== 体感 ======
 let gammaRef=0, betaRef=0;
+let orientationBound = false;
+
 function onOrient(e){
   if(e.gamma==null || e.beta==null) return;
   orientationActive = true;
@@ -558,7 +560,28 @@ function onOrient(e){
   betaRef  = e.beta;  // 前后
   if(gammaOffset===null){ gammaOffset = e.gamma; betaOffset = e.beta; }
 }
-window.addEventListener('deviceorientation', onOrient, true);
+
+// 在用户手势（点击开始）内绑定，Android Chrome 要求这样才能触发
+function bindOrientation(){
+  if(orientationBound) return;
+  orientationBound = true;
+  // 优先用 absolute（包含绝对方向，更适合倾斜控制）
+  if('ondeviceorientationabsolute' in window){
+    window.addEventListener('deviceorientationabsolute', onOrient, true);
+  }
+  window.addEventListener('deviceorientation', onOrient, true);
+  // 3秒后检查有没有收到事件
+  setTimeout(()=>{
+    if(!orientationActive){
+      // 体感未激活，更新提示
+      const hint = document.getElementById('hint');
+      if(hint) hint.textContent = '👆 手指滑动控制海豹 ｜ 当前设备不支持陀螺仪';
+    } else {
+      const hint = document.getElementById('hint');
+      if(hint) hint.textContent = '📱 体感已激活！倾斜手机控制海豹 ｜ 也可手指滑动';
+    }
+  }, 3000);
+}
 
 // ====== 键盘（电脑测试用）======
 window.addEventListener('keydown', e=>{
@@ -938,6 +961,8 @@ function startGame(){
   document.getElementById('hint').style.display='block';
   document.getElementById('diag').style.display='none'; // 隐藏诊断面板
   loadLevel(0);
+  // 在用户手势内绑定体感传感器（Android Chrome 要求）
+  bindOrientation();
   // 尝试请求传感器权限 (iOS 13+)
   if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
     DeviceOrientationEvent.requestPermission().then(s=>{

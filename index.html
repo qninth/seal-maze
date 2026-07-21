@@ -64,13 +64,19 @@ const TILE = 0;
 const WALL = 1;
 const GOAL = 2;
 
-// 海豹物理
+// 海豹物理（调优：更顺滑、有阻尼惯性感）
 const SEAL_R = 0.34;       // 海豹半径（格子单位）
-const MAX_SPEED = 0.18;    // 最大速度
-const FRICTION = 0.92;     // 摩擦
-const TILT_K = 0.0008;     // 倾斜→加速度系数
-const KBD_K  = 0.012;      // 键盘→加速度
-const BOUNCE = 0.35;       // 碰墙弹性
+const MAX_SPEED = 0.15;    // 最大速度（略降，更可控）
+const FRICTION = 0.985;    // 摩擦（提高→滑行更长，有阻尼感而非急停）
+const ACCEL = 0.0028;      // 基础加速度系数
+const BOUNCE = 0.3;        // 碰墙弹性（略降，避免乱弹）
+const TILT_DEAD = 3;       // 体感死区（度），消除静止抖动
+const TILT_SOFT = 25;      // 体感柔和区（度），此范围内力度递增
+const INPUT_SMOOTH = 0.25; // 输入低通滤波系数（越小越平滑，0.1-0.4）
+// 兼容旧引用
+const TILT_K = ACCEL;
+const KBD_K  = 0.008;
+const TOUCH_K = 0.008;
 
 // 画布
 const canvas = document.getElementById('game');
@@ -396,7 +402,6 @@ let kbd = {up:false,down:false,left:false,right:false};
 let lastT = 0;
 // 触摸控制
 let touch = { active:false, dx:0, dy:0, id:null };
-const TOUCH_K = 0.012;   // 触摸→加速度系数（与键盘相同）
 const TOUCH_DEAD = 8;    // 死区像素
 const TOUCH_MAX = 70;    // 最大有效距离
 
@@ -426,6 +431,7 @@ function loadLevel(i){
   seal.x = start.x + 0.5;
   seal.y = start.y + 0.5;
   seal.vx = 0; seal.vy = 0; seal.angle = 0;
+  seal.axSmooth = 0; seal.aySmooth = 0; // 重置输入滤波
   trail = []; particles = []; won = false;
   document.getElementById('lv').textContent = '第 '+(i+1)+' 关';
   resize();
@@ -437,6 +443,18 @@ function isWall(cx,cy){
   return grid[cy][cx]===WALL;
 }
 
+// 体感输入曲线：死区→柔和递增→饱和
+// 输入倾斜角度（度），返回 -1..1 的归一化力度
+function tiltCurve(deg){
+  const a = Math.abs(deg);
+  if(a < TILT_DEAD) return 0;
+  // 死区以上，用平方曲线柔和递增（小角度细腻，大角度渐强）
+  let n = (a - TILT_DEAD) / (TILT_SOFT - TILT_DEAD);
+  n = Math.min(n, 1);
+  n = n * n; // 二次曲线，前段更柔
+  return n * Math.sign(deg);
+}
+
 function step(dt){
   // 输入→加速度
   let ax=0, ay=0;
@@ -444,8 +462,9 @@ function step(dt){
     // gamma: 左右倾斜 -90..90; beta: 前后 -180..180
     const lr = (gammaRef - gammaOffset); // 用户校正后
     const fb = (betaRef  - betaOffset);
-    ax = clamp(lr,-35,35) * TILT_K * 60;
-    ay = clamp(fb,-35,35) * TILT_K * 60;
+    // 曲线映射：死区 + 柔和递增 + 饱和
+    ax = tiltCurve(lr) * ACCEL * 60;
+    ay = tiltCurve(fb) * ACCEL * 60;
   }
   // 键盘
   if(kbd.left) ax -= KBD_K;
@@ -458,10 +477,19 @@ function step(dt){
     ay += touch.dy * TOUCH_K;
   }
 
-  seal.vx += ax;
-  seal.vy += ay;
-  seal.vx *= FRICTION;
-  seal.vy *= FRICTION;
+  // 输入低通滤波（平滑加速度，消除抖动突变）
+  seal.axSmooth = seal.axSmooth || 0;
+  seal.aySmooth = seal.aySmooth || 0;
+  seal.axSmooth += (ax - seal.axSmooth) * INPUT_SMOOTH;
+  seal.aySmooth += (ay - seal.aySmooth) * INPUT_SMOOTH;
+
+  seal.vx += seal.axSmooth * dt;
+  seal.vy += seal.aySmooth * dt;
+  // 阻尼：速度越快衰减越多（非线性，模拟"粘滞"阻尼感）
+  const sp0 = Math.hypot(seal.vx, seal.vy);
+  const drag = Math.pow(FRICTION, dt) - sp0 * 0.015 * dt;
+  seal.vx *= Math.max(drag, 0.9);
+  seal.vy *= Math.max(drag, 0.9);
 
   // 限速
   const sp = Math.hypot(seal.vx,seal.vy);

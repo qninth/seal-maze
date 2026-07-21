@@ -1,0 +1,6 @@
+*.js
+node_modules/
+package*.json
+final_*.png
+shot_*.png
+v2_*.png

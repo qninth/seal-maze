@@ -1,0 +1,983 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>海豹滚滚迷宫 🦭</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; }
+html,body { width:100%; height:100%; overflow:hidden; background:#1a1a2e; font-family:'Segoe UI',sans-serif; touch-action:none; user-select:none; -webkit-user-select:none; }
+#wrap { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg,#1a1a2e,#16213e); }
+#game { display:block; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,.5); }
+#hud { position:fixed; top:0; left:0; right:0; padding:8px 14px; display:flex; justify-content:space-between; align-items:center; color:#eee; font-size:14px; z-index:10; pointer-events:none; text-shadow:0 2px 4px rgba(0,0,0,.7); }
+#hud .tag { background:rgba(0,0,0,.35); padding:4px 12px; border-radius:20px; backdrop-filter:blur(4px); }
+.btn { pointer-events:auto; background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.15); color:#fff; padding:6px 16px; border-radius:20px; cursor:pointer; font-size:13px; backdrop-filter:blur(4px); }
+.btn:active { background:rgba(255,255,255,.15); }
+.overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); backdrop-filter:blur(6px); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:20; color:#fff; text-align:center; padding:20px; }
+.overlay h1 { font-size:clamp(28px,6vw,48px); margin-bottom:8px; }
+.overlay p { font-size:clamp(14px,3.5vw,18px); color:#ccc; margin-bottom:24px; line-height:1.6; max-width:420px; }
+.overlay .big { font-size:64px; margin-bottom:12px; }
+.bigbtn { background:linear-gradient(135deg,#e94560,#ff6b6b); color:#fff; border:none; padding:14px 40px; border-radius:30px; font-size:20px; cursor:pointer; box-shadow:0 6px 20px rgba(233,69,96,.4); transition:transform .1s; }
+.bigbtn:active { transform:scale(.95); }
+.hint { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); color:rgba(255,255,255,.4); font-size:12px; text-align:center; z-index:5; pointer-events:none; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <canvas id="game"></canvas>
+</div>
+<div id="hud" style="display:none">
+  <span class="tag" id="lv">第 1 关</span>
+  <button class="btn" id="resetBtn">重置</button>
+</div>
+<div id="hint" class="hint" style="display:none">👆 手指滑动控制海豹滚动方向 ｜ 📱 有陀螺仪自动切换到体感</div>
+
+<div id="diag" style="position:fixed; top:50px; right:10px; background:rgba(0,0,0,.75); color:#0f0; font:11px/1.4 monospace; padding:6px 8px; border-radius:6px; z-index:15; pointer-events:none; max-width:160px; display:none; white-space:pre;"></div>
+
+<div class="overlay" id="startScreen">
+  <div class="big">🦭</div>
+  <h1>海豹滚滚迷宫</h1>
+  <p>圆滚滚的小海豹迷路啦！<br>倾斜手机，把它滚到发光的出口！<br>🟡 斑海豹 &nbsp;🟢 出口</p>
+  <button class="bigbtn" id="startBtn">开始游戏</button>
+</div>
+
+<div class="overlay" id="winScreen" style="display:none">
+  <div class="big">🎉</div>
+  <h1 id="winTitle">通关！</h1>
+  <p id="winMsg">太棒了！</p>
+  <button class="bigbtn" id="nextBtn">下一关</button>
+</div>
+
+<div class="overlay" id="permScreen" style="display:none">
+  <div class="big">📱</div>
+  <h1>需要动作权限</h1>
+  <p>请在手机上打开此页面并允许传感器访问。<br>电脑端可用键盘方向键测试。</p>
+  <button class="bigbtn" id="retryBtn">重试</button>
+</div>
+
+<script>
+(function(){
+'use strict';
+
+// ====== 配置 ======
+const TILE = 0;
+const WALL = 1;
+const GOAL = 2;
+
+// 海豹物理
+const SEAL_R = 0.34;       // 海豹半径（格子单位）
+const MAX_SPEED = 0.18;    // 最大速度
+const FRICTION = 0.92;     // 摩擦
+const TILT_K = 0.0008;     // 倾斜→加速度系数
+const KBD_K  = 0.012;      // 键盘→加速度
+const BOUNCE = 0.35;       // 碰墙弹性
+
+// 画布
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+let DPR = 1, CELL = 40, offsetX = 0, offsetY = 0;
+
+// 关卡数据： '#'墙 ' '路 'S'起点 'G'出口 — DFS算法生成，全部BFS验证可解
+const LEVELS = [
+`#######
+#S#   #
+# ### #
+#   # #
+### # #
+#    G#
+#######`,
+`#######
+#S  # #
+### # #
+# #   #
+# ### #
+#    G#
+#######`,
+`#######
+#S  # #
+### # #
+#   # #
+# ### #
+#    G#
+#######`,
+`#########
+#S#     #
+# # ### #
+#   # # #
+##### # #
+# #   # #
+# # # # #
+#   #  G#
+#########`,
+`#########
+#S  #   #
+### # # #
+#   # # #
+# ### # #
+# #   # #
+# ##### #
+#      G#
+#########`,
+`###########
+#S  #     #
+### ### # #
+# #   # # #
+# ### # ###
+#   # #   #
+# # # ### #
+# # #   # #
+# # ### # #
+# #      G#
+###########`,
+`###########
+#S  #     #
+### # #####
+# # #     #
+# # ##### #
+# # #     #
+# # # ### #
+# #   #   #
+# ##### ###
+#        G#
+###########`,
+`#############
+#S#   #     #
+# # # ### # #
+#   #   # # #
+####### ### #
+# #   #   # #
+# # # ### # #
+# # #   #   #
+# # ### ### #
+# # # #   # #
+# # # ### # #
+#       #  G#
+#############`,
+`#############
+#S#       # #
+# ### ### # #
+#     #   # #
+####### ### #
+#     # #   #
+# ##### ### #
+#     # #   #
+# ### # # # #
+# # #   # # #
+# # ##### # #
+#         #G#
+#############`,
+`###############
+#S#           #
+# ### ####### #
+# #   #     # #
+# # ### ### # #
+# # #     # # #
+# # # ##### # #
+# #   #     # #
+# ##### ##### #
+#       # #   #
+######### # ###
+# #         # #
+# # ######### #
+#            G#
+###############`,
+`###############
+#S#       #   #
+# # # ### ### #
+# # #   #   # #
+# ##### ### # #
+#     #   #   #
+##### # # ### #
+# #   # # # # #
+# # ##### # # #
+#   #   # #   #
+# ### # # # ###
+# #   # # # # #
+# # ### # # # #
+#   #     #  G#
+###############`,
+`#################
+#S#       #     #
+# # ##### # ### #
+#   #   #   #   #
+##### ####### ###
+#           # # #
+# ######### # # #
+# # #     #   # #
+# # # ### ##### #
+# #     #       #
+# # ####### ### #
+# # #     # #   #
+# ### ### ### # #
+#   # # # #   # #
+### # # # # ### #
+#     #     #  G#
+#################`,
+`#################
+#S#     #     # #
+# # ### # # # # #
+# #   #   # #   #
+# ### ##### ### #
+#   # #     #   #
+### ### ##### ###
+# #   #   # #   #
+# ### ### # ### #
+#   #     #   # #
+### ######### # #
+#   #   #     # #
+# ### # # # ### #
+#   # #   #   # #
+# # # ####### # #
+# #         #  G#
+#################`,
+`###################
+#S  # #           #
+### # # ##### #####
+#   # #     #     #
+# ### ##### ##### #
+# # #           # #
+# # # ########### #
+# #       #     # #
+# ##### ### ### # #
+#   #   #   # # # #
+### ##### ### # # #
+# #       # #   # #
+# ######### # ### #
+#           # #   #
+# ### ##### # # ###
+# #   #   # # #   #
+# ##### # ### ### #
+#       #        G#
+###################`,
+`###################
+#S  #       #     #
+### ### ### ##### #
+# #   # # #       #
+# ### # # ####### #
+#   # # #       # #
+# ### # ### ##### #
+#   # #   # #     #
+# # # ### # # #####
+# # #   # #   #   #
+# # ### # # ##### #
+# #   # # #     # #
+# ### # # ##### # #
+#   # # # #     # #
+# ### # # # ##### #
+# #   # # # #   # #
+# # ### # # # # # #
+# #       #   #  G#
+###################`,
+`#####################
+#S#       # #       #
+# # ##### # # ##### #
+# #     # # # #   # #
+# ##### # # # # # # #
+#   #   # # # # #   #
+### # ### # # # ### #
+# # # #   # # #   # #
+# # # # ### # ### # #
+#   # # #     #   # #
+# ### # ####### ### #
+# #   #   #     # # #
+# # ##### # ##### # #
+#   #   #   # #   # #
+##### # ##### # # # #
+#     #   #     #   #
+# ### ##### #########
+#   # #   # #     # #
+# # ### # # ### # # #
+# #     #       #  G#
+#####################`,
+`#####################
+#S    # #         # #
+##### # # ### ### # #
+# #   #     #   #   #
+# # ####### ### ### #
+# #     # # # #   # #
+# ##### # # # ### ###
+#     # # # #   #   #
+### # # # # # # ### #
+#   # # # #   #   # #
+# ##### # ### ##### #
+#     # # #   #   # #
+##### # # # ### # # #
+#     # #   #   #   #
+# ### # # ### ##### #
+# # # # #   # #     #
+# # # # ##### # #####
+# #   #   #   # #   #
+# ####### # ### ### #
+#           #      G#
+#####################`,
+`#######################
+#S#           #   #   #
+# # ######### # # ### #
+# # #     # #   #     #
+# # # ### # ######### #
+#   # # #     #       #
+##### # ##### # #######
+#     #       # #     #
+# ##### ####### ### # #
+# #   # #     # #   # #
+# # ### # ### # # #####
+# #     # #   # #     #
+# ### ##### # # ##### #
+#   #     # # #       #
+### ##### # ######### #
+#   #   #   #     #   #
+# ### # ### # # ### ###
+#     # #   # #   # # #
+# ##### ##### ### # # #
+# #   #       # #   # #
+# # # ######### ##### #
+#   #                G#
+#######################`,
+`#######################
+#S#           #   #   #
+# # ### ##### # # # # #
+# #   # #   #   # # # #
+# ### # # # ##### # ###
+#   # # # # #   # #   #
+### ### # ### # # ### #
+# #   # #     #       #
+# ### # ############# #
+#   # # #       # #   #
+# # # # # ##### # # ###
+# # # #       # # # # #
+# # # ######### # # # #
+# # #   #     # # # # #
+# # ### # ### # # # # #
+# #   # # # #   # # # #
+# ##### # # ##### # # #
+#       # #       #   #
+# ####### # ##### ### #
+# #       #   #   #   #
+# ### ####### # ### ###
+#     #       #      G#
+#######################`,
+`#########################
+#S#                 #   #
+# ### ##### ####### # # #
+#   # #   #       #   # #
+### ### # ### ### ##### #
+# #   # #   #   # #     #
+# ### # ### ##### # #####
+#   #   # #       #   # #
+### ##### ########### # #
+#       #     #       # #
+# ##### ##### # ####### #
+#     #     # #       # #
+# ### ##### # ####### # #
+#   # #   #   #     # # #
+### # ### ### ### ### # #
+#   #   #   #   # #   # #
+# ##### ### ### # # ### #
+# #   #   #       # #   #
+# ### ### ######### # # #
+# #     #           # # #
+# # ################# ###
+# #           #   #     #
+# ######### # # # ##### #
+#           #   #      G#
+#########################`
+];
+
+// ====== 状态 ======
+let grid, cols, rows, start, goal, levelIdx = 0;
+let seal = { x:0, y:0, vx:0, vy:0, angle:0 };
+let trail = [];
+let particles = [];
+let shakeT = 0;
+let won = false;
+let gammaOffset = null, betaOffset = null;
+let orientationActive = false;
+let kbd = {up:false,down:false,left:false,right:false};
+let lastT = 0;
+// 触摸控制
+let touch = { active:false, dx:0, dy:0, id:null };
+const TOUCH_K = 0.012;   // 触摸→加速度系数（与键盘相同）
+const TOUCH_DEAD = 8;    // 死区像素
+const TOUCH_MAX = 70;    // 最大有效距离
+
+// ====== 关卡解析 ======
+function parseLevel(str){
+  const lines = str.trim().split('\n');
+  rows = lines.length;
+  cols = Math.max(...lines.map(l=>l.length));
+  grid = [];
+  let s=null, g=null;
+  for(let y=0;y<rows;y++){
+    grid[y]=[];
+    for(let x=0;x<cols;x++){
+      const ch = lines[y][x] || ' ';
+      if(ch==='#') grid[y][x]=WALL;
+      else if(ch==='S'){ grid[y][x]=TILE; s={x,y}; }
+      else if(ch==='G'){ grid[y][x]=GOAL; g={x,y}; }
+      else grid[y][x]=TILE;
+    }
+  }
+  start = s; goal = g;
+}
+
+function loadLevel(i){
+  levelIdx = i;
+  parseLevel(LEVELS[i]);
+  seal.x = start.x + 0.5;
+  seal.y = start.y + 0.5;
+  seal.vx = 0; seal.vy = 0; seal.angle = 0;
+  trail = []; particles = []; won = false;
+  document.getElementById('lv').textContent = '第 '+(i+1)+' 关';
+  resize();
+}
+
+// ====== 物理与碰撞 ======
+function isWall(cx,cy){
+  if(cx<0||cy<0||cx>=cols||cy>=rows) return true;
+  return grid[cy][cx]===WALL;
+}
+
+function step(dt){
+  // 输入→加速度
+  let ax=0, ay=0;
+  if(orientationActive && gammaOffset!==null){
+    // gamma: 左右倾斜 -90..90; beta: 前后 -180..180
+    const lr = (gammaRef - gammaOffset); // 用户校正后
+    const fb = (betaRef  - betaOffset);
+    ax = clamp(lr,-35,35) * TILT_K * 60;
+    ay = clamp(fb,-35,35) * TILT_K * 60;
+  }
+  // 键盘
+  if(kbd.left) ax -= KBD_K;
+  if(kbd.right) ax += KBD_K;
+  if(kbd.up) ay -= KBD_K;
+  if(kbd.down) ay += KBD_K;
+  // 触摸滑动
+  if(touch.active){
+    ax += touch.dx * TOUCH_K;
+    ay += touch.dy * TOUCH_K;
+  }
+
+  seal.vx += ax;
+  seal.vy += ay;
+  seal.vx *= FRICTION;
+  seal.vy *= FRICTION;
+
+  // 限速
+  const sp = Math.hypot(seal.vx,seal.vy);
+  if(sp > MAX_SPEED){ seal.vx*=MAX_SPEED/sp; seal.vy*=MAX_SPEED/sp; }
+
+  // 子步进碰撞，防止穿墙
+  const steps = Math.max(1, Math.ceil(sp / (SEAL_R*0.4)));
+  const sx = seal.vx/steps, sy = seal.vy/steps;
+  for(let s=0; s<steps; s++){
+    moveAxis(sx, 0);
+    moveAxis(0, sy);
+  }
+  // 旋转（根据位移）
+  seal.angle += sp * 0.3;
+
+  // 拖尾
+  if(sp>0.01){
+    trail.push({x:seal.x,y:seal.y,life:1});
+    if(trail.length>30) trail.shift();
+  }
+  for(const t of trail) t.life -= 0.04;
+  trail = trail.filter(t=>t.life>0);
+
+  // 粒子
+  for(const p of particles){ p.x+=p.vx; p.y+=p.vy; p.life-=0.03; }
+  particles = particles.filter(p=>p.life>0);
+
+  // 胜利检测
+  if(!won && goal){
+    const dx = seal.x - (goal.x+0.5), dy = seal.y - (goal.y+0.5);
+    if(Math.hypot(dx,dy) < SEAL_R + 0.2){
+      won = true;
+      onWin();
+    }
+  }
+}
+
+function moveAxis(dx, dy){
+  // 尝试移动
+  const nx = seal.x + dx, ny = seal.y + dy;
+  // 碰撞检测：圆形对网格墙
+  if(circleHitsWall(nx, ny)){
+    // 碰撞：弹回 + 粒子
+    if(Math.abs(dx)>0.005 || Math.abs(dy)>0.005){
+      spawnImpact(nx, ny);
+      shakeT = 0.15;
+    }
+    if(dx!==0) seal.vx *= -BOUNCE;
+    if(dy!==0) seal.vy *= -BOUNCE;
+    return false;
+  }
+  seal.x = nx; seal.y = ny;
+  return true;
+}
+
+function circleHitsWall(cx, cy){
+  // 检查圆周围格子
+  const r = SEAL_R;
+  const x0 = Math.floor(cx - r), x1 = Math.floor(cx + r);
+  const y0 = Math.floor(cy - r), y1 = Math.floor(cy + r);
+  for(let gy=y0; gy<=y1; gy++){
+    for(let gx=x0; gx<=x1; gx++){
+      if(isWall(gx,gy)){
+        // 最近点
+        const nx = clamp(cx, gx, gx+1);
+        const ny = clamp(cy, gy, gy+1);
+        const dx = cx - nx, dy = cy - ny;
+        if(dx*dx+dy*dy < r*r) return true;
+      }
+    }
+  }
+  return false;
+}
+
+function clamp(v,a,b){ return v<a?a:v>b?b:v; }
+
+function spawnImpact(x,y){
+  for(let i=0;i<5;i++){
+    particles.push({
+      x,y,
+      vx:(Math.random()-0.5)*0.08,
+      vy:(Math.random()-0.5)*0.08,
+      life:1
+    });
+  }
+}
+
+// ====== 体感 ======
+let gammaRef=0, betaRef=0;
+function onOrient(e){
+  if(e.gamma==null || e.beta==null) return;
+  orientationActive = true;
+  gammaRef = e.gamma; // 左右
+  betaRef  = e.beta;  // 前后
+  if(gammaOffset===null){ gammaOffset = e.gamma; betaOffset = e.beta; }
+}
+window.addEventListener('deviceorientation', onOrient, true);
+
+// ====== 键盘（电脑测试用）======
+window.addEventListener('keydown', e=>{
+  switch(e.key){
+    case 'ArrowLeft': case 'a': case 'A': kbd.left=true; break;
+    case 'ArrowRight': case 'd': case 'D': kbd.right=true; break;
+    case 'ArrowUp': case 'w': case 'W': kbd.up=true; break;
+    case 'ArrowDown': case 's': case 'S': kbd.down=true; break;
+    case 'r': case 'R': loadLevel(levelIdx); break;
+  }
+});
+window.addEventListener('keyup', e=>{
+  switch(e.key){
+    case 'ArrowLeft': case 'a': case 'A': kbd.left=false; break;
+    case 'ArrowRight': case 'd': case 'D': kbd.right=false; break;
+    case 'ArrowUp': case 'w': case 'W': kbd.up=false; break;
+    case 'ArrowDown': case 's': case 'S': kbd.down=false; break;
+  }
+});
+
+// ====== 触摸滑动（国产浏览器+陀螺仪备选）======
+// 注意：监听绑在 document 上而非 canvas，因为微信X5内核下canvas的touch事件
+// 可能不触发，且canvas只覆盖迷宫区域，手指摸到四周黑边会漏掉。
+let touchStartX = 0, touchStartY = 0;
+let touchEventLog = []; // 诊断日志
+
+function logTouch(msg){
+  touchEventLog.push(Date.now().toString().slice(-5) + ' ' + msg);
+  if(touchEventLog.length > 8) touchEventLog.shift();
+}
+
+// 只有游戏画面可见（开始/通关遮罩已关闭）时才接管触摸，否则让按钮正常点击
+function gameActive(){
+  const ss = document.getElementById('startScreen');
+  const ws = document.getElementById('winScreen');
+  const ps = document.getElementById('permScreen');
+  return ss.style.display==='none' && (ws.style.display==='none'||ws.style.display==='') && (ps.style.display==='none'||ps.style.display==='');
+}
+
+function handleTouchStart(e){
+  if(!gameActive()) return; // 开始/通关画面不拦截，让按钮点击穿透
+  logTouch('start touches=' + e.touches.length);
+  if(touch.active) return;
+  const t = e.changedTouches[0];
+  touch.id = t.identifier;
+  touch.active = true;
+  touchStartX = t.clientX;
+  touchStartY = t.clientY;
+  touch.dx = 0; touch.dy = 0;
+  e.preventDefault();
+}
+
+function handleTouchMove(e){
+  if(!gameActive()) return;
+  for(const t of e.changedTouches){
+    if(t.identifier !== touch.id) continue;
+    let dx = (t.clientX - touchStartX);
+    let dy = (t.clientY - touchStartY);
+    const dist = Math.hypot(dx, dy);
+    if(dist < TOUCH_DEAD){
+      touch.dx = 0; touch.dy = 0;
+    } else {
+      const scale = Math.min((dist - TOUCH_DEAD) / (TOUCH_MAX - TOUCH_DEAD), 1);
+      touch.dx = (dx / dist) * scale;
+      touch.dy = (dy / dist) * scale;
+    }
+  }
+  e.preventDefault();
+}
+
+function handleTouchEnd(e){
+  if(!gameActive()) return;
+  for(const t of e.changedTouches){
+    if(t.identifier === touch.id){
+      touch.id = null;
+      touch.active = false;
+      touch.dx = 0; touch.dy = 0;
+      logTouch('end');
+    }
+  }
+  e.preventDefault();
+}
+
+document.addEventListener('touchstart', handleTouchStart, {passive:false});
+document.addEventListener('touchmove', handleTouchMove, {passive:false});
+document.addEventListener('touchend', handleTouchEnd, {passive:false});
+document.addEventListener('touchcancel', ()=>{ touch.id=null; touch.active=false; touch.dx=0; touch.dy=0; logTouch('cancel'); });
+
+// 兼容：部分浏览器touch不触发，加mouse事件兜底（鼠标拖拽）
+let mouseDown = false, mouseX0=0, mouseY0=0;
+document.addEventListener('mousedown', e=>{
+  if(!gameActive()) return;
+  mouseDown = true; mouseX0=e.clientX; mouseY0=e.clientY;
+  touch.active = true; touch.dx=0; touch.dy=0;
+  logTouch('mousedown');
+});
+document.addEventListener('mousemove', e=>{
+  if(!mouseDown || !gameActive()) return;
+  let dx = e.clientX - mouseX0, dy = e.clientY - mouseY0;
+  const dist = Math.hypot(dx,dy);
+  if(dist < TOUCH_DEAD){ touch.dx=0; touch.dy=0; }
+  else { const s=Math.min((dist-TOUCH_DEAD)/(TOUCH_MAX-TOUCH_DEAD),1); touch.dx=(dx/dist)*s; touch.dy=(dy/dist)*s; }
+});
+document.addEventListener('mouseup', ()=>{ mouseDown=false; touch.active=false; touch.dx=0; touch.dy=0; logTouch('mouseup'); });
+
+// ====== 渲染 ======
+function resize(){
+  DPR = window.devicePixelRatio || 1;
+  const VW = innerWidth, VH = innerHeight;
+  // 计算单元格大小，迷宫居中
+  const padding = 20;
+  const availW = VW - padding*2;
+  const availH = VH - 60; // 给HUD留空间
+  CELL = Math.floor(Math.min(availW/cols, availH/rows));
+  CELL = Math.max(CELL, 16);
+  const mazeW = CELL*cols, mazeH = CELL*rows;
+  canvas.style.width = mazeW+'px';
+  canvas.style.height = mazeH+'px';
+  canvas.width = mazeW*DPR;
+  canvas.height = mazeH*DPR;
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  offsetX=0; offsetY=0;
+}
+
+function render(){
+  const W = CELL*cols, H = CELL*rows;
+  // 屏幕震动
+  let sx=0, sy=0;
+  if(shakeT>0){ sx=(Math.random()-0.5)*shakeT*20; sy=(Math.random()-0.5)*shakeT*20; shakeT-=0.016; }
+  ctx.save();
+  ctx.translate(sx, sy);
+
+  // 背景
+  const bg = ctx.createLinearGradient(0,0,W,H);
+  bg.addColorStop(0,'#0f3460'); bg.addColorStop(1,'#16213e');
+  ctx.fillStyle = bg;
+  ctx.fillRect(0,0,W,H);
+
+  // 地板纹理
+  ctx.fillStyle = 'rgba(255,255,255,.025)';
+  for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){
+    if(grid[y][x]!==WALL && (x+y)%2===0){
+      ctx.fillRect(x*CELL,y*CELL,CELL,CELL);
+    }
+  }
+
+  // 墙
+  for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){
+    if(grid[y][x]===WALL){
+      drawWall(x,y);
+    }
+  }
+
+  // 出口
+  if(goal) drawGoal(goal.x, goal.y);
+
+  // 拖尾
+  for(const t of trail){
+    ctx.fillStyle = `rgba(255,255,255,${t.life*0.15})`;
+    ctx.beginPath();
+    ctx.arc(t.x*CELL, t.y*CELL, SEAL_R*CELL*0.8, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // 粒子
+  for(const p of particles){
+    ctx.fillStyle = `rgba(255,220,150,${p.life})`;
+    ctx.beginPath();
+    ctx.arc(p.x*CELL, p.y*CELL, 3*p.life, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  // 触摸控制指示器
+  if(touch.active && (touch.dx!==0 || touch.dy!==0)){
+    const cx = seal.x*CELL, cy = seal.y*CELL;
+    const len = Math.hypot(touch.dx, touch.dy) * 60;
+    if(len > 5){
+      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.lineWidth = 2;
+      ctx.setLineDash([4,6]);
+      ctx.beginPath();
+      ctx.moveTo(cx, cy);
+      ctx.lineTo(cx + touch.dx*len, cy + touch.dy*len);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      // 终点小圆圈
+      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.beginPath();
+      ctx.arc(cx + touch.dx*len, cy + touch.dy*len, 4, 0, Math.PI*2);
+      ctx.fill();
+    }
+  }
+
+  // 海豹
+  drawSeal(seal.x*CELL, seal.y*CELL, seal.angle);
+
+  ctx.restore();
+}
+
+function drawWall(x,y){
+  const px=x*CELL, py=y*CELL;
+  // 冰墙渐变
+  const g = ctx.createLinearGradient(px,py,px,py+CELL);
+  g.addColorStop(0,'#3a7bd5'); g.addColorStop(1,'#2d5fa8');
+  ctx.fillStyle = g;
+  ctx.fillRect(px,py,CELL,CELL);
+  // 高光
+  ctx.fillStyle='rgba(255,255,255,.12)';
+  ctx.fillRect(px,py,CELL,CELL*0.35);
+  // 边框
+  ctx.strokeStyle='rgba(0,0,0,.3)';
+  ctx.lineWidth=1;
+  ctx.strokeRect(px+.5,py+.5,CELL-1,CELL-1);
+}
+
+function drawGoal(x,y){
+  const cx=(x+0.5)*CELL, cy=(y+0.5)*CELL;
+  const t = Date.now()*0.003;
+  const pulse = 0.5+0.5*Math.sin(t);
+  // 光晕
+  const grd = ctx.createRadialGradient(cx,cy,0,cx,cy,CELL*0.7);
+  grd.addColorStop(0,`rgba(80,255,120,${0.5+pulse*0.3})`);
+  grd.addColorStop(1,'rgba(80,255,120,0)');
+  ctx.fillStyle = grd;
+  ctx.fillRect(x*CELL-CELL, y*CELL-CELL, CELL*3, CELL*3);
+  // 出口圈
+  ctx.strokeStyle = `rgba(80,255,120,${0.7+pulse*0.3})`;
+  ctx.lineWidth = 3;
+  ctx.beginPath();
+  ctx.arc(cx,cy, CELL*0.32 + pulse*4, 0, Math.PI*2);
+  ctx.stroke();
+  // 星星
+  ctx.fillStyle='#50ff78';
+  ctx.font = `${CELL*0.5}px serif`;
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  ctx.fillText('🚩', cx, cy);
+}
+
+function drawSeal(cx, cy, angle){
+  const R = SEAL_R * CELL;
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(angle);
+
+  // 影子
+  ctx.fillStyle = 'rgba(0,0,0,.25)';
+  ctx.beginPath();
+  ctx.ellipse(2, 3, R*0.95, R*0.85, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // 主体（圆滚滚灰色）
+  const bodyG = ctx.createRadialGradient(-R*0.3,-R*0.3,R*0.1, 0,0,R*1.1);
+  bodyG.addColorStop(0,'#d4d4d4');
+  bodyG.addColorStop(0.5,'#a8a8a8');
+  bodyG.addColorStop(1,'#787878');
+  ctx.fillStyle = bodyG;
+  ctx.beginPath();
+  ctx.arc(0,0,R,0,Math.PI*2);
+  ctx.fill();
+
+  // 斑点（斑海豹特征）
+  ctx.fillStyle = 'rgba(60,60,60,.5)';
+  const spots = [
+    [-R*0.4,-R*0.2,R*0.18],[R*0.3,-R*0.3,R*0.14],
+    [-R*0.2,R*0.4,R*0.12],[R*0.5,R*0.1,R*0.16],
+    [R*0.1,R*0.5,R*0.1],[-R*0.5,R*0.3,R*0.08]
+  ];
+  for(const [sx,sy,sr] of spots){
+    ctx.beginPath();
+    ctx.arc(sx,sy,sr,0,Math.PI*2);
+    ctx.fill();
+  }
+
+  // 脸（面朝旋转方向前的固定方向）
+  ctx.restore();
+  // 脸不随旋转转，朝向运动方向
+  let faceAngle = 0;
+  const sp = Math.hypot(seal.vx,seal.vy);
+  if(sp>0.02) faceAngle = Math.atan2(seal.vy, seal.vx);
+  ctx.save();
+  ctx.translate(cx, cy);
+  ctx.rotate(faceAngle);
+
+  // 眼睛
+  ctx.fillStyle = '#1a1a1a';
+  ctx.beginPath();
+  ctx.arc(R*0.35, -R*0.3, R*0.1, 0, Math.PI*2);
+  ctx.arc(R*0.35,  R*0.3, R*0.1, 0, Math.PI*2);
+  ctx.fill();
+  // 眼睛高光
+  ctx.fillStyle='#fff';
+  ctx.beginPath();
+  ctx.arc(R*0.38,-R*0.33,R*0.04,0,Math.PI*2);
+  ctx.arc(R*0.38, R*0.27,R*0.04,0,Math.PI*2);
+  ctx.fill();
+
+  // 鼻子（V形小鼻）
+  ctx.strokeStyle='#3a3a3a';
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(R*0.75,-R*0.06); ctx.lineTo(R*0.85,0); ctx.lineTo(R*0.75,R*0.06);
+  ctx.stroke();
+  // 鼻头
+  ctx.fillStyle='#3a3a3a';
+  ctx.beginPath();
+  ctx.arc(R*0.87, 0, R*0.05, 0, Math.PI*2);
+  ctx.fill();
+
+  // 胡须
+  ctx.strokeStyle='rgba(200,200,200,.6)';
+  ctx.lineWidth=1.5;
+  for(const sgn of [-1,1]){
+    ctx.beginPath();
+    ctx.moveTo(R*0.4, sgn*R*0.4);
+    ctx.lineTo(R*0.9, sgn*R*0.5);
+    ctx.moveTo(R*0.4, sgn*R*0.45);
+    ctx.lineTo(R*0.9, sgn*R*0.7);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+
+// ====== 胜利 ======
+function onWin(){
+  // 烟花粒子
+  for(let i=0;i<40;i++){
+    const a = Math.random()*Math.PI*2, sp=Math.random()*0.2+0.05;
+    particles.push({
+      x:goal.x+0.5, y:goal.y+0.5,
+      vx:Math.cos(a)*sp, vy:Math.sin(a)*sp,
+      life:1
+    });
+  }
+  setTimeout(()=>{
+    const win = document.getElementById('winScreen');
+    const title = document.getElementById('winTitle');
+    const msg = document.getElementById('winMsg');
+    const btn = document.getElementById('nextBtn');
+    if(levelIdx >= LEVELS.length-1){
+      title.textContent='全部通关！';
+      msg.textContent='🎉 你带小海豹走完了全部 '+LEVELS.length+' 关！';
+      btn.textContent='重新开始';
+    } else {
+      title.textContent='第 '+(levelIdx+1)+' 关通关！';
+      msg.textContent='海豹离出口又近了一步～';
+      btn.textContent='下一关';
+    }
+    win.style.display='flex';
+  }, 600);
+}
+
+// ====== 主循环 ======
+function loop(t){
+  const dt = Math.min((t - lastT)/16.67, 2);
+  lastT = t;
+  if(!won) step(dt);
+  render();
+  // 更新诊断面板
+  const dg = document.getElementById('diag');
+  if(dg.style.display !== 'none'){
+    dg.textContent =
+      '输入状态:\n' +
+      'touch.active=' + touch.active + '\n' +
+      '  dx=' + touch.dx.toFixed(2) + ' dy=' + touch.dy.toFixed(2) + '\n' +
+      'orient.active=' + orientationActive + '\n' +
+      'seal vx=' + seal.vx.toFixed(3) + '\n' +
+      '---事件---\n' + touchEventLog.join('\n');
+  }
+  requestAnimationFrame(loop);
+}
+
+// ====== 初始化 ======
+function startGame(){
+  document.getElementById('startScreen').style.display='none';
+  document.getElementById('hud').style.display='flex';
+  document.getElementById('hint').style.display='block';
+  document.getElementById('diag').style.display='none'; // 隐藏诊断面板
+  loadLevel(0);
+  // 尝试请求传感器权限 (iOS 13+)
+  if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+    DeviceOrientationEvent.requestPermission().then(s=>{
+      if(s!=='granted'){
+        document.getElementById('permScreen').style.display='flex';
+      }
+    }).catch(()=>{});
+  }
+  requestAnimationFrame(loop);
+}
+
+document.getElementById('startBtn').addEventListener('click', startGame);
+document.getElementById('resetBtn').addEventListener('click', ()=>loadLevel(levelIdx));
+document.getElementById('nextBtn').addEventListener('click', ()=>{
+  document.getElementById('winScreen').style.display='none';
+  if(levelIdx >= LEVELS.length-1) loadLevel(0);
+  else loadLevel(levelIdx+1);
+});
+document.getElementById('retryBtn').addEventListener('click', ()=>{
+  if(typeof DeviceOrientationEvent !== 'undefined' && typeof DeviceOrientationEvent.requestPermission === 'function'){
+    DeviceOrientationEvent.requestPermission();
+  }
+  document.getElementById('permScreen').style.display='none';
+});
+
+window.addEventListener('resize', ()=>{ if(grid) resize(); });
+window.addEventListener('orientationchange', ()=>setTimeout(()=>{ if(grid) resize(); }, 300));
+
+// 预加载第一关画面（开始屏背后）
+parseLevel(LEVELS[0]);
+seal.x=start.x+0.5; seal.y=start.y+0.5;
+resize();
+render();
+
+// 调试用：暴露到全局
+window.loadLevel = loadLevel;
+window.gotoLevel = function(n){ loadLevel(n); };
+window._dbg = { getSeal:()=>seal, getKbd:()=>kbd, getGrid:()=>grid, touch:()=>touch };
+
+})();
+</script>
+</body>
+</html>

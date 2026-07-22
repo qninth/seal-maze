@@ -64,12 +64,12 @@ const TILE = 0;
 const WALL = 1;
 const GOAL = 2;
 
-// 海豹物理（慢速滚动：降速+强阻尼，突出"滚动"而非"冲锋"）
+// 海豹物理（提速+方向修正）
 const SEAL_R = 0.34;       // 海豹半径（格子单位）
-const MAX_SPEED = 0.075;   // 最大速度（大幅降低，看清滚动过程）
-const FRICTION = 0.96;     // 摩擦（适中，松手会缓慢滑停）
-const ACCEL = 0.0015;      // 基础加速度（降低，启动更从容）
-const BOUNCE = 0.25;       // 碰墙弹性（柔和弹回）
+const MAX_SPEED = 0.12;    // 最大速度（适中，滚动感+速度兼顾）
+const FRICTION = 0.96;     // 摩擦
+const ACCEL = 0.0022;      // 基础加速度
+const BOUNCE = 0.25;       // 碰墙弹性
 const TILT_DEAD = 3;       // 体感死区（度）
 const TILT_SOFT = 25;      // 体感柔和区（度）
 const INPUT_SMOOTH = 0.25; // 输入低通滤波系数（越小越平滑，0.1-0.4）
@@ -460,8 +460,8 @@ function step(dt){
   let ax=0, ay=0;
   if(orientationActive && gammaOffset!==null){
     // gamma: 左右倾斜 -90..90; beta: 前后 -180..180
-    const lr = (gammaRef - gammaOffset); // 用户校正后
-    const fb = (betaRef  - betaOffset);
+    const lr = -(gammaRef - gammaOffset); // 取反：手机右倾→海豹向右
+    const fb = -(betaRef  - betaOffset);  // 取反：前倾→海豹向前（向上）
     // 曲线映射：死区 + 柔和递增 + 饱和
     ax = tiltCurve(lr) * ACCEL * 60;
     ay = tiltCurve(fb) * ACCEL * 60;

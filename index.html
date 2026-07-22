@@ -460,8 +460,8 @@ function step(dt){
   let ax=0, ay=0;
   if(orientationActive && gammaOffset!==null){
     // gamma: 左右倾斜 -90..90; beta: 前后 -180..180
-    const lr = -(gammaRef - gammaOffset); // 取反：手机右倾→海豹向右
-    const fb = -(betaRef  - betaOffset);  // 取反：前倾→海豹向前（向上）
+    const lr = (gammaRef - gammaOffset); // 手机右倾→海豹向右
+    const fb = (betaRef  - betaOffset);  // 前倾→海豹向前
     // 曲线映射：死区 + 柔和递增 + 饱和
     ax = tiltCurve(lr) * ACCEL * 60;
     ay = tiltCurve(fb) * ACCEL * 60;

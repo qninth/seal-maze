@@ -6,20 +6,20 @@
 <title>海豹滚滚迷宫 🦭</title>
 <style>
 * { margin:0; padding:0; box-sizing:border-box; }
-html,body { width:100%; height:100%; overflow:hidden; background:#1a1a2e; font-family:'Segoe UI',sans-serif; touch-action:none; user-select:none; -webkit-user-select:none; }
-#wrap { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg,#1a1a2e,#16213e); }
-#game { display:block; border-radius:12px; box-shadow:0 8px 32px rgba(0,0,0,.5); }
-#hud { position:fixed; top:0; left:0; right:0; padding:8px 14px; display:flex; justify-content:space-between; align-items:center; color:#eee; font-size:14px; z-index:10; pointer-events:none; text-shadow:0 2px 4px rgba(0,0,0,.7); }
-#hud .tag { background:rgba(0,0,0,.35); padding:4px 12px; border-radius:20px; backdrop-filter:blur(4px); }
-.btn { pointer-events:auto; background:rgba(0,0,0,.35); border:1px solid rgba(255,255,255,.15); color:#fff; padding:6px 16px; border-radius:20px; cursor:pointer; font-size:13px; backdrop-filter:blur(4px); }
-.btn:active { background:rgba(255,255,255,.15); }
-.overlay { position:fixed; inset:0; background:rgba(0,0,0,.7); backdrop-filter:blur(6px); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:20; color:#fff; text-align:center; padding:20px; }
+html,body { width:100%; height:100%; overflow:hidden; background:#e8f1f8; font-family:'Segoe UI',sans-serif; touch-action:none; user-select:none; -webkit-user-select:none; }
+#wrap { position:fixed; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; background:linear-gradient(135deg,#e8f1f8,#d4e6f2); }
+#game { display:block; border-radius:12px; box-shadow:0 4px 20px rgba(100,140,180,.2); }
+#hud { position:fixed; top:0; left:0; right:0; padding:8px 14px; display:flex; justify-content:space-between; align-items:center; color:#3a5a7a; font-size:14px; z-index:10; pointer-events:none; text-shadow:0 1px 2px rgba(255,255,255,.6); }
+#hud .tag { background:rgba(255,255,255,.7); padding:4px 12px; border-radius:20px; backdrop-filter:blur(4px); border:1px solid rgba(150,185,220,.3); }
+.btn { pointer-events:auto; background:rgba(255,255,255,.7); border:1px solid rgba(150,185,220,.4); color:#3a5a7a; padding:6px 16px; border-radius:20px; cursor:pointer; font-size:13px; backdrop-filter:blur(4px); }
+.btn:active { background:rgba(150,185,220,.3); }
+.overlay { position:fixed; inset:0; background:rgba(230,242,250,.85); backdrop-filter:blur(6px); display:flex; flex-direction:column; align-items:center; justify-content:center; z-index:20; color:#2a4a6a; text-align:center; padding:20px; }
 .overlay h1 { font-size:clamp(28px,6vw,48px); margin-bottom:8px; }
-.overlay p { font-size:clamp(14px,3.5vw,18px); color:#ccc; margin-bottom:24px; line-height:1.6; max-width:420px; }
+.overlay p { font-size:clamp(14px,3.5vw,18px); color:#5a7a9a; margin-bottom:24px; line-height:1.6; max-width:420px; }
 .overlay .big { font-size:64px; margin-bottom:12px; }
-.bigbtn { background:linear-gradient(135deg,#e94560,#ff6b6b); color:#fff; border:none; padding:14px 40px; border-radius:30px; font-size:20px; cursor:pointer; box-shadow:0 6px 20px rgba(233,69,96,.4); transition:transform .1s; }
+.bigbtn { background:linear-gradient(135deg,#5ba3d5,#7ec0ec); color:#fff; border:none; padding:14px 40px; border-radius:30px; font-size:20px; cursor:pointer; box-shadow:0 4px 16px rgba(91,163,213,.35); transition:transform .1s; }
 .bigbtn:active { transform:scale(.95); }
-.hint { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); color:rgba(255,255,255,.4); font-size:12px; text-align:center; z-index:5; pointer-events:none; }
+.hint { position:fixed; bottom:16px; left:50%; transform:translateX(-50%); color:rgba(90,120,150,.6); font-size:12px; text-align:center; z-index:5; pointer-events:none; }
 </style>
 </head>
 <body>
@@ -738,16 +738,16 @@ function render(){
   ctx.save();
   ctx.translate(sx, sy);
 
-  // 背景
+  // 背景（冰雪白渐变）
   const bg = ctx.createLinearGradient(0,0,W,H);
-  bg.addColorStop(0,'#0f3460'); bg.addColorStop(1,'#16213e');
+  bg.addColorStop(0,'#f0f6fc'); bg.addColorStop(1,'#e2edf5');
   ctx.fillStyle = bg;
   ctx.fillRect(0,0,W,H);
 
-  // 地板纹理
-  ctx.fillStyle = 'rgba(255,255,255,.025)';
+  // 地板纹理（淡蓝冰面，棋盘格微差异）
   for(let y=0;y<rows;y++) for(let x=0;x<cols;x++){
     if(grid[y][x]!==WALL && (x+y)%2===0){
+      ctx.fillStyle = 'rgba(180,210,235,.18)';
       ctx.fillRect(x*CELL,y*CELL,CELL,CELL);
     }
   }
@@ -762,9 +762,9 @@ function render(){
   // 出口
   if(goal) drawGoal(goal.x, goal.y);
 
-  // 拖尾
+  // 拖尾（浅灰，白底上可见）
   for(const t of trail){
-    ctx.fillStyle = `rgba(255,255,255,${t.life*0.15})`;
+    ctx.fillStyle = `rgba(150,170,190,${t.life*0.18})`;
     ctx.beginPath();
     ctx.arc(t.x*CELL, t.y*CELL, SEAL_R*CELL*0.8, 0, Math.PI*2);
     ctx.fill();
@@ -783,7 +783,7 @@ function render(){
     const cx = seal.x*CELL, cy = seal.y*CELL;
     const len = Math.hypot(touch.dx, touch.dy) * 60;
     if(len > 5){
-      ctx.strokeStyle = 'rgba(255,255,255,0.25)';
+      ctx.strokeStyle = 'rgba(100,140,180,0.3)';
       ctx.lineWidth = 2;
       ctx.setLineDash([4,6]);
       ctx.beginPath();
@@ -792,7 +792,7 @@ function render(){
       ctx.stroke();
       ctx.setLineDash([]);
       // 终点小圆圈
-      ctx.fillStyle = 'rgba(255,255,255,0.2)';
+      ctx.fillStyle = 'rgba(100,140,180,0.25)';
       ctx.beginPath();
       ctx.arc(cx + touch.dx*len, cy + touch.dy*len, 4, 0, Math.PI*2);
       ctx.fill();
@@ -807,16 +807,19 @@ function render(){
 
 function drawWall(x,y){
   const px=x*CELL, py=y*CELL;
-  // 冰墙渐变
+  // 浅蓝冰块渐变（低饱和度）
   const g = ctx.createLinearGradient(px,py,px,py+CELL);
-  g.addColorStop(0,'#3a7bd5'); g.addColorStop(1,'#2d5fa8');
+  g.addColorStop(0,'#a8cee8'); g.addColorStop(0.5,'#8ec0de'); g.addColorStop(1,'#7eb3d8');
   ctx.fillStyle = g;
   ctx.fillRect(px,py,CELL,CELL);
-  // 高光
-  ctx.fillStyle='rgba(255,255,255,.12)';
-  ctx.fillRect(px,py,CELL,CELL*0.35);
-  // 边框
-  ctx.strokeStyle='rgba(0,0,0,.3)';
+  // 顶部冰面高光
+  ctx.fillStyle='rgba(255,255,255,.35)';
+  ctx.fillRect(px,py,CELL,CELL*0.3);
+  // 底部暗边（冰块立体感）
+  ctx.fillStyle='rgba(100,140,180,.15)';
+  ctx.fillRect(px,py+CELL*0.85,CELL,CELL*0.15);
+  // 边框（浅色，融入冰面）
+  ctx.strokeStyle='rgba(120,165,200,.4)';
   ctx.lineWidth=1;
   ctx.strokeRect(px+.5,py+.5,CELL-1,CELL-1);
 }

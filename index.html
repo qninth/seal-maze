@@ -28,7 +28,11 @@ html,body { width:100%; height:100%; overflow:hidden; background:#e8f1f8; font-f
 </div>
 <div id="hud" style="display:none">
   <span class="tag" id="lv">第 1 关</span>
-  <button class="btn" id="resetBtn">重置</button>
+  <div style="display:flex; gap:6px; align-items:center;">
+    <button class="btn" id="flipLR" title="左右翻转">↔️</button>
+    <button class="btn" id="flipFB" title="前后翻转">↕️</button>
+    <button class="btn" id="resetBtn">重置</button>
+  </div>
 </div>
 <div id="hint" class="hint" style="display:none">👆 手指滑动控制海豹滚动方向 ｜ 📱 有陀螺仪自动切换到体感</div>
 
@@ -402,6 +406,7 @@ let kbd = {up:false,down:false,left:false,right:false};
 let lastT = 0;
 // 触摸控制
 let touch = { active:false, dx:0, dy:0, id:null };
+let flipLR = 1, flipFB = 1; // 方向翻转：1=正常, -1=翻转
 const TOUCH_DEAD = 8;    // 死区像素
 const TOUCH_MAX = 70;    // 最大有效距离
 
@@ -443,6 +448,19 @@ function isWall(cx,cy){
   return grid[cy][cx]===WALL;
 }
 
+// 方向翻转后短暂提示
+function flashHint(msg){
+  const h = document.getElementById('hint');
+  const old = h.textContent;
+  h.textContent = msg;
+  h.style.color = 'rgba(91,163,213,.9)';
+  clearTimeout(h._timer);
+  h._timer = setTimeout(()=>{
+    h.textContent = old;
+    h.style.color = '';
+  }, 1500);
+}
+
 // 体感输入曲线：死区→柔和递增→饱和
 // 输入倾斜角度（度），返回 -1..1 的归一化力度
 function tiltCurve(deg){
@@ -460,8 +478,8 @@ function step(dt){
   let ax=0, ay=0;
   if(orientationActive && gammaOffset!==null){
     // gamma: 左右倾斜 -90..90; beta: 前后 -180..180
-    const lr = (gammaRef - gammaOffset); // 手机右倾→海豹向右
-    const fb = (betaRef  - betaOffset);  // 前倾→海豹向前
+    const lr = (gammaRef - gammaOffset) * flipLR;
+    const fb = (betaRef  - betaOffset) * flipFB;
     // 曲线映射：死区 + 柔和递增 + 饱和
     ax = tiltCurve(lr) * ACCEL * 60;
     ay = tiltCurve(fb) * ACCEL * 60;
@@ -1003,6 +1021,14 @@ function startGame(){
 
 document.getElementById('startBtn').addEventListener('click', startGame);
 document.getElementById('resetBtn').addEventListener('click', ()=>loadLevel(levelIdx));
+document.getElementById('flipLR').addEventListener('click', ()=>{
+  flipLR *= -1;
+  flashHint('左右方向已翻转 ' + (flipLR>0?'↔ 恢复':'↔ 翻转'));
+});
+document.getElementById('flipFB').addEventListener('click', ()=>{
+  flipFB *= -1;
+  flashHint('前后方向已翻转 ' + (flipFB>0?'↕ 恢复':'↕ 翻转'));
+});
 document.getElementById('nextBtn').addEventListener('click', ()=>{
   document.getElementById('winScreen').style.display='none';
   if(levelIdx >= LEVELS.length-1) loadLevel(0);

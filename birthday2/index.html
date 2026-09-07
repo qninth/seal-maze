@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>第二份惊喜</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    font-family: -apple-system, "PingFang SC", "Microsoft YaHei", sans-serif;
+    min-height:100vh; display:flex; align-items:center; justify-content:center;
+    background:linear-gradient(160deg,#1e3a5f 0%,#2a4a7a 45%,#d96a5f 100%);
+    color:#fff; text-align:center; padding:24px;
+  }
+  .card {
+    max-width:480px; width:100%; background:rgba(255,255,255,.12);
+    border:1px solid rgba(255,255,255,.25); border-radius:24px;
+    padding:36px 28px; backdrop-filter:blur(8px);
+    box-shadow:0 20px 60px rgba(0,0,0,.3);
+  }
+  h1 { font-size:26px; margin-bottom:12px; letter-spacing:1px; }
+  .sub { font-size:15px; opacity:.9; line-height:1.8; margin-bottom:24px; }
+  .btn {
+    background:#ffd166; color:#4a2c2a; border:none; padding:14px 28px;
+    font-size:18px; font-weight:700; border-radius:999px; cursor:pointer;
+    box-shadow:0 8px 20px rgba(0,0,0,.25);
+  }
+  .btn:active { transform:scale(.97); }
+  .animals { display:flex; gap:16px; justify-content:center; margin:20px 0; flex-wrap:wrap; }
+  .animal {
+    flex:1; min-width:96px; background:rgba(255,255,255,.14);
+    border:2px solid rgba(255,255,255,.3); border-radius:18px;
+    padding:18px 8px; cursor:pointer;
+  }
+  .animal:hover { background:rgba(255,255,255,.24); }
+  .animal .emoji { font-size:44px; display:block; margin-bottom:8px; }
+  .animal .name { font-size:14px; }
+  .hidden { display:none; }
+  .answer {
+    background:rgba(255,255,255,.16); border-radius:16px;
+    padding:20px; margin-top:8px; font-size:17px; line-height:1.9;
+  }
+  .answer .big { font-size:30px; }
+  .hint { font-size:14px; opacity:.85; margin-top:10px; }
+  .confetti { position:fixed; top:-10px; font-size:24px; z-index:10; pointer-events:none;
+    animation:fall 3s linear forwards; }
+  @keyframes fall { to { transform:translateY(110vh) rotate(360deg); opacity:0; } }
+</style>
+</head>
+<body>
+<div class="card">
+  <div id="stage1">
+    <h1>🎁 第二份惊喜</h1>
+    <p class="sub">晖晖，生日快乐。<br>这一关，藏着一个会唱歌的小秘密。<br>点下面的按钮，游戏开始。</p>
+    <button class="btn" onclick="start()">🎵 拆开它</button>
+  </div>
+
+  <div id="stage2" class="hidden">
+    <h1>🐧 谁最爱冰天雪地？</h1>
+    <p class="sub">你刚在书架上找到了三只小家伙。<br>它们当中，谁最离不开寒冷、一热就受不了？<br>点中它，它就会告诉你下一站去哪。</p>
+    <div class="animals">
+      <div class="animal" onclick="guess('seal')"><span class="emoji">🦭</span><span class="name">海豹</span></div>
+      <div class="animal" onclick="guess('penguin')"><span class="emoji">🐧</span><span class="name">企鹅</span></div>
+      <div class="animal" onclick="guess('capybara')"><span class="emoji">🦫</span><span class="name">卡皮巴拉</span></div>
+    </div>
+    <p class="hint" id="hint"></p>
+  </div>
+
+  <div id="stage3" class="hidden">
+    <h1>❄️ 去冰箱！</h1>
+    <div class="answer">
+      答对啦！<br>
+      打开家里的<span class="big">🧊 冰箱</span>，<br>
+      第二份礼物正躺在里面等你。<br>
+      找到它，别忘了看看它旁边的那张小纸条。
+    </div>
+    <p class="hint">—— 下一关，会从冰箱开始。❤️</p>
+  </div>
+</div>
+
+<script>
+  var ctx = null;
+  function getCtx(){ if(!ctx){ ctx = new (window.AudioContext||window.webkitAudioContext)(); } return ctx; }
+  function start(){
+    document.getElementById('stage1').classList.add('hidden');
+    document.getElementById('stage2').classList.remove('hidden');
+    playHappyBirthday();
+  }
+  function guess(which){
+    var hint = document.getElementById('hint');
+    if(which === 'penguin'){
+      document.getElementById('stage2').classList.add('hidden');
+      document.getElementById('stage3').classList.remove('hidden');
+      launchConfetti(); playHappyBirthday();
+    } else if(which === 'seal'){
+      hint.textContent = '海豹也能下水，但它更爱在海里游哦，再想想～';
+    } else {
+      hint.textContent = '卡皮巴拉最爱泡温泉、晒太阳，它可不爱冷，再想想～';
+    }
+  }
+  function playHappyBirthday(){
+    try{
+      var c = getCtx();
+      var notes = [392,392,440,392,523,494, 392,392,440,392,587,523,
+                   392,392,784,659,523,494,440, 698,698,659,523,587,523];
+      var beat = 0.42;
+      notes.forEach(function(f,i){
+        var t = c.currentTime + i*beat;
+        var o = c.createOscillator(), g = c.createGain();
+        o.type = 'triangle'; o.frequency.value = f;
+        g.gain.setValueAtTime(0.0001, t);
+        g.gain.exponentialRampToValueAtTime(0.3, t+0.05);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+beat*0.9);
+        o.connect(g); g.connect(c.destination);
+        o.start(t); o.stop(t+beat);
+      });
+    }catch(e){}
+  }
+  function launchConfetti(){
+    var e = ['🎉','🎊','✨','🧊','💛','🎁'];
+    for(var i=0;i<24;i++){
+      (function(){
+        var s = document.createElement('div'); s.className='confetti';
+        s.textContent = e[Math.floor(Math.random()*e.length)];
+        s.style.left = Math.random()*100+'vw';
+        s.style.animationDelay = Math.random()*0.8+'s';
+        s.style.animationDuration = (2+Math.random()*2)+'s';
+        document.body.appendChild(s);
+        setTimeout(function(){ s.remove(); },5000);
+      })();
+    }
+  }
+</script>
+</body>
+</html>

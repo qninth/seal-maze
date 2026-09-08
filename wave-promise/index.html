@@ -57,6 +57,7 @@
   <h1>浪的约定</h1>
   <p class="sub">一个关于海、爷爷与三个心愿的夏日小故事<br>桨板 · 钓鱼 · 冲浪 · 漂流</p>
   <button class="btn" id="btnStart">🌊 开始旅程</button>
+  <button class="btn ghost" id="btnStory" style="margin-top:10px;">📖 剧情模式 · 只看故事</button>
 </div>
 
 <!-- 序章故事 -->
@@ -404,10 +405,15 @@ function startDay(){
   $('briefDay').textContent=d.tag;$('briefTitle').textContent=d.title;
   $('briefStory').textContent=d.story;$('briefHow').textContent=d.how;
   show('ovBrief');
+  $('btnBriefGo').textContent=storyMode?'继续 ▸':'出发 ▸';
   $('winPic').style.display='none';
 }
+var storyMode=false;   // 剧情模式：跳过玩法，直接过剧情
 $('btnBriefGo').addEventListener('click',function(){
-  hideAll();hud(true,DAYS[day].tag);
+  hideAll();
+  if(storyMode){ dlg(null);hud(false);finishWin(); return; }
+  hud(true,DAYS[day].tag);
+  cur=GAME[day]();state=cur;
   cur.init(state);running=true;lastT=performance.now();
   cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
 });
@@ -464,6 +470,14 @@ var PRO=[
   '“激将法对我没用……除非只用三天。”小澈翻过清单，背面还有一行被盐渍盖住。更奇怪的是，前三行的圆字，他越看越眼熟。'
 ];
 $('btnStart').addEventListener('click',function(){
+  storyMode=false;
+  $('coverPic').src=ASSET.cover.indexOf('__')===0?'':ASSET.cover;
+  $('bottlePic').src=ASSET.bottle.indexOf('__')===0?'':ASSET.bottle;
+  proStep=0;$('proText').innerHTML=PRO[0];
+  show('ovPrologue');
+});
+$('btnStory').addEventListener('click',function(){
+  storyMode=true;
   $('coverPic').src=ASSET.cover.indexOf('__')===0?'':ASSET.cover;
   $('bottlePic').src=ASSET.bottle.indexOf('__')===0?'':ASSET.bottle;
   proStep=0;$('proText').innerHTML=PRO[0];

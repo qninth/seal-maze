@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-<title>浪的约定 · 夏日物语</title>
+<title>浪的约定 · 我们不必同速</title>
 <link rel="icon" href="data:,">
 <style>
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;}
@@ -25,7 +25,6 @@
     border-radius:999px;cursor:pointer;box-shadow:0 8px 22px rgba(0,0,0,.35);margin-top:14px;}
   .btn:active{transform:scale(.96);}
   .btn.ghost{background:rgba(255,255,255,.14);color:#eef6ff;font-weight:500;font-size:14px;padding:10px 24px;}
-  .day-tag{font-size:12px;letter-spacing:3px;color:#8fd3ff;margin-bottom:8px;}
   #hud{position:fixed;top:0;left:0;right:0;padding:calc(8px + env(safe-area-inset-top)) 14px 8px;
     display:none;justify-content:space-between;align-items:center;z-index:10;pointer-events:none;}
   #hud .tag{font-size:13px;font-weight:700;color:#fff;background:rgba(13,33,55,.55);
@@ -33,11 +32,33 @@
   #hearts{font-size:15px;letter-spacing:2px;}
   #goal{font-size:12px;opacity:.9;background:rgba(13,33,55,.55);padding:5px 12px;border-radius:999px;}
   #dlg{position:fixed;left:0;right:0;bottom:0;z-index:15;display:none;padding:10px 14px calc(14px + env(safe-area-inset-bottom));}
-  #dlg .box{max-width:520px;margin:0 auto;background:rgba(10,24,40,.88);border:1px solid rgba(255,255,255,.18);
-    border-radius:16px;padding:13px 16px;font-size:14.5px;line-height:1.85;color:#eef6ff;backdrop-filter:blur(6px);}
-  #dlg .who{color:#ffd166;font-weight:700;margin-right:8px;}
-  #dlg .next{float:right;font-size:12px;opacity:.65;}
-  .row{display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;}
+  #dlgBox{max-width:520px;margin:0 auto;}
+  /* 聊天气泡 */
+  #ovChat{padding:14px 12px calc(14px + env(safe-area-inset-bottom));justify-content:flex-start;}
+  #chatScroll{width:100%;max-width:480px;flex:1;overflow-y:auto;padding:10px 2px;-webkit-overflow-scrolling:touch;}
+  #chatBox{display:flex;flex-direction:column;}
+  .bub{display:flex;margin:7px 0;align-items:flex-end;gap:7px;animation:up .3s both;}
+  .bub.j{justify-content:flex-start;}
+  .bub.b{justify-content:flex-end;}
+  .bub .av{width:32px;height:32px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;
+    font-size:18px;background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2);}
+  .bub.j .av{background:rgba(255,209,102,.22);}
+  .bub.b .av{background:rgba(126,200,230,.22);}
+  .msgwrap{max-width:76%;display:flex;flex-direction:column;}
+  .bub.j .msgwrap{align-items:flex-start;}
+  .bub.b .msgwrap{align-items:flex-end;}
+  .who{font-size:10.5px;opacity:.5;margin:0 6px 2px;}
+  .msg{padding:9px 13px;border-radius:14px;font-size:14.5px;line-height:1.75;text-align:left;}
+  .bub.j .msg{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);border-bottom-left-radius:4px;}
+  .bub.b .msg{background:#3d6e9e;border-bottom-right-radius:4px;}
+  .narr{text-align:center;color:rgba(238,246,255,.62);font-size:13px;line-height:1.85;margin:10px 8px;animation:up .3s both;}
+  .note{margin:10px auto;max-width:84%;background:#f6efdd;color:#5a4632;border-radius:12px;padding:11px 14px;
+    font-size:14px;line-height:1.8;text-align:left;box-shadow:0 4px 14px rgba(0,0,0,.25);animation:up .3s both;}
+  .note:before{content:'📎 字条';display:block;font-size:11px;opacity:.6;margin-bottom:4px;}
+  .gold{color:#ffd166;}
+  #chatNext{text-align:center;font-size:12px;opacity:.6;margin-top:8px;animation:pulse 1.6s infinite;}
+  @keyframes pulse{50%{opacity:.2}}
+  @keyframes up{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 </style>
 </head>
 <body>
@@ -49,7 +70,14 @@
   <span class="tag" id="goal"></span>
 </div>
 
-<div id="dlg"><div class="box" id="dlgBox"></div></div>
+<div id="dlg"><div id="dlgBox"></div></div>
+
+<!-- 聊天框叙事层 -->
+<div class="ov hidden" id="ovChat">
+  <div id="chatScroll"><div id="chatBox"></div></div>
+  <button class="btn" id="btnChatGo" style="display:none">出发 ▸</button>
+  <div id="chatNext">▼ 继续</div>
+</div>
 
 <!-- 封面 -->
 <div class="ov" id="ovCover">
@@ -60,43 +88,20 @@
   <button class="btn ghost" id="btnStory" style="margin-top:10px;">📖 剧情模式 · 只看故事</button>
 </div>
 
-<!-- 序章故事 -->
-<div class="ov hidden" id="ovPrologue">
-  <img class="pic" id="bottlePic" alt="">
-  <p class="story" id="proText"></p>
-  <button class="btn" id="btnProNext">继续 ▸</button>
-</div>
-
-<!-- 关卡说明 -->
-<div class="ov hidden" id="ovBrief">
-  <p class="day-tag" id="briefDay"></p>
-  <h1 id="briefTitle" style="font-size:24px;letter-spacing:3px;"></h1>
-  <p class="story" id="briefStory"></p>
-  <p class="sub" id="briefHow"></p>
-  <button class="btn" id="btnBriefGo">出发 ▸</button>
-</div>
-
-<!-- 过关 -->
-<div class="ov hidden" id="ovWin">
-  <img class="pic" id="winPic" alt="" style="display:none;">
-  <p class="story" id="winText"></p>
-  <button class="btn" id="btnWinNext">继续 ▸</button>
-</div>
-
 <!-- 失败 -->
 <div class="ov hidden" id="ovFail">
   <h1 style="font-size:22px;">🌊 一个浪头打过来…</h1>
   <p class="sub" id="failText"></p>
-  <div class="row">
+  <div style="display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;">
     <button class="btn" id="btnRetry">再试一次</button>
     <button class="btn ghost" id="btnSkip">故事优先，跳过本关 ▸</button>
   </div>
 </div>
 
-<!-- 结局 -->
+<!-- 结局收尾 -->
 <div class="ov hidden" id="ovEnd">
   <img class="pic" id="endPic" alt="">
-  <p class="story" id="endText"></p>
+  <p class="story" style="margin-top:18px;">🌊 《浪的约定》· 完<br><span style="opacity:.7;font-size:13px">两条航迹，并成了一条。</span></p>
   <button class="btn" id="btnReplay">🔄 再玩一次</button>
 </div>
 
@@ -122,39 +127,123 @@ function resize(){ DPR=Math.min(window.devicePixelRatio||1,2);
 window.addEventListener('resize',resize);resize();
 
 var $=function(id){return document.getElementById(id);};
-var GAME=[];         // 每关一个工厂
-var day=0;           // 当前章节 1..3, 4=尾声
-var hearts=3;
-var starCount=0;     // 本关海星/鱼计数
-var starGoal=0;
-var running=false;
-var raf=0,lastT=0;
-var memories=[];     // 收集的记忆短语
-var state={};        // 关卡内部状态
+var GAME=[];
+var day=0,hearts=3,starCount=0,starGoal=0;
+var running=false,paused=false,raf=0,lastT=0;
+var memories=[],state={};
 
-function show(id){ ['ovCover','ovPrologue','ovBrief','ovWin','ovFail','ovEnd'].forEach(function(o){
+function show(id){ ['ovCover','ovChat','ovFail','ovEnd'].forEach(function(o){
   $(o).classList.toggle('hidden',o!==id); }); }
 function hideAll(){ show('__none__'); }
-function hud(on,label,goalText){
+function hud(on,label,goalText2){
   $('hud').style.display=on?'flex':'none';
   if(label)$('dayLabel').textContent=label;
-  if(goalText)$('goal').textContent=goalText;
+  if(goalText2)$('goal').textContent=goalText2;
   $('hearts').textContent='❤️'.repeat(hearts)+'🤍'.repeat(Math.max(0,3-hearts));
 }
-function dlg(say){ var d=$('dlg'); if(!say){d.style.display='none';return;}
-  d.style.display='block';
-  $('dlgBox').innerHTML='<span class="who">'+(say.who||'小澈')+'：</span>'+say.text+
-    '<span class="next"> 点击继续 ▸</span>'; }
+function goalText(){ return (state.goalLabel||('🐚 '+starCount+' / '+starGoal)); }
+function addStar(n){ starCount+=n||1; hud(true,null,goalText()); }
 
-/* 海面背景（所有玩法共用） */
+/* ================= 聊天框引擎 ================= */
+var chatScreens=[],chatIdx=0,chatOnDone=null,chatGoLabel=null;
+function msgEl(m){
+  var el;
+  if(m.w==='n'){ el=document.createElement('div');el.className='narr';el.textContent=m.t;return el; }
+  if(m.w==='note'){ el=document.createElement('div');el.className='note';el.textContent=m.t;return el; }
+  el=document.createElement('div');el.className='bub '+(m.w==='b'?'b':'j');
+  var av=document.createElement('div');av.className='av';av.textContent=m.w==='b'?'🐶':'🐕';
+  var wrap=document.createElement('div');wrap.className='msgwrap';
+  var who=document.createElement('div');who.className='who';who.textContent=m.w==='b'?'小白':'小金毛';
+  var msg=document.createElement('div');msg.className='msg';msg.innerHTML=m.t;
+  wrap.appendChild(who);wrap.appendChild(msg);
+  el.appendChild(av);el.appendChild(wrap);
+  return el;
+}
+function showChat(screens,opt){
+  opt=opt||{};
+  chatScreens=screens;chatIdx=0;chatOnDone=opt.onDone||null;chatGoLabel=opt.goLabel||null;
+  $('btnChatGo').style.display='none';
+  $('btnChatGo').textContent=chatGoLabel||'继续 ▸';
+  $('chatNext').style.display='block';
+  show('ovChat');renderChatScreen();
+}
+function renderChatScreen(){
+  var box=$('chatBox');box.innerHTML='';
+  chatScreens[chatIdx].forEach(function(m,i){
+    var el=msgEl(m);el.style.animationDelay=(i*0.12)+'s';box.appendChild(el);
+  });
+  $('chatScroll').scrollTop=$('chatScroll').scrollHeight;
+  var last=chatIdx>=chatScreens.length-1;
+  $('btnChatGo').style.display=(last&&chatGoLabel)?'inline-block':'none';
+  $('chatNext').style.display=(last&&chatGoLabel)?'none':'block';
+}
+function chatAdvance(){
+  if($('ovChat').classList.contains('hidden'))return;
+  var last=chatIdx>=chatScreens.length-1;
+  if(last){
+    if(chatGoLabel)return; /* 等按钮 */
+    var f=chatOnDone;chatOnDone=null;f&&f();return;
+  }
+  chatIdx++;renderChatScreen();
+}
+$('ovChat').addEventListener('click',function(e){
+  if(e.target.closest('button'))return;chatAdvance();
+});
+$('btnChatGo').addEventListener('click',function(){
+  var f=chatOnDone;chatOnDone=null;f&&f();
+});
+
+/* ================= 输入 ================= */
+var touchSide=0,touchX=0.5,touchDown=false,tapPulse=0;
+function gameActive(){ return running&&!paused&&$('dlg').style.display!=='block'; }
+function sideFrom(x){ return x<W/2?-1:1; }
+function onStart(e){
+  if(running===false||!cur)return;
+  /* 游戏内小对话（dlg）：点按关闭——不依赖 gameActive */
+  var d=$('dlg');
+  if(d.style.display==='block'){
+    d.style.display='none';
+    if(state.onAdvance){var f=state.onAdvance;state.onAdvance=null;}
+    if(e.cancelable)e.preventDefault(); return;
+  }
+  if(!running||paused)return;
+  var t=e.touches?e.touches[0]:e;
+  touchSide=sideFrom(t.clientX);tapPulse=1;
+  if(t){ touchX=t.clientX/W;touchDown=true; }
+  if(e.cancelable)e.preventDefault();
+}
+function onMove(e){ if(!gameActive())return;
+  var t=e.touches?e.touches[0]:e; if(t){touchSide=sideFrom(t.clientX);touchX=t.clientX/W;}
+  if(e.cancelable)e.preventDefault(); }
+function onEnd(){ touchSide=0;touchDown=false; }
+['touchstart','touchmove'].forEach(function(ev){document.addEventListener(ev,onStart,{passive:false});});
+document.addEventListener('touchend',onEnd,{passive:false});
+document.addEventListener('mousedown',onStart);
+document.addEventListener('mousemove',function(e){ if(touchSide)onMove(e); });
+document.addEventListener('mouseup',onEnd);
+document.addEventListener('keydown',function(e){ if(!gameActive())return;
+  if(e.key==='ArrowLeft'||e.key==='a'){touchSide=-1;touchX=Math.max(0.08,touchX-0.06);}
+  if(e.key==='ArrowRight'||e.key==='d'){touchSide=1;touchX=Math.min(0.92,touchX+0.06);}
+  if(e.key===' '){tapPulse=1;touchDown=true;} });
+document.addEventListener('keyup',function(e){ if(e.key==='ArrowLeft'||e.key==='a'||e.key==='ArrowRight'||e.key==='d')touchSide=0; });
+
+/* ================= 对话气泡（游戏内小对话） ================= */
+function dlg(say){
+  var d=$('dlg');
+  if(!say){d.style.display='none';return;}
+  var box=$('dlgBox');box.innerHTML='';
+  var m = say.w==='note' ? say : (say.w ? say : {w:'n',t:say.text||say.t||''});
+  box.appendChild(msgEl(m));
+  d.style.display='block';
+}
+
+/* ================= 海面/角色绘制 ================= */
 function drawSea(t){
   var g=X.createLinearGradient(0,0,0,H);
   g.addColorStop(0,'#7ec8e3');g.addColorStop(.45,'#4a9cc9');g.addColorStop(1,'#1d5f8a');
   X.fillStyle=g;X.fillRect(0,0,W,H);
-  // 太阳/光斑
   X.save();X.globalAlpha=.35;X.fillStyle='#fff3c4';
   X.beginPath();X.arc(W*0.78,H*0.16,Math.min(W,H)*0.09,0,7);X.fill();X.restore();
-  // 波浪线
   X.strokeStyle='rgba(255,255,255,.25)';X.lineWidth=2;
   for(var i=0;i<4;i++){ X.beginPath();
     for(var x=0;x<=W;x+=14){ var y=H*(0.3+i*0.18)+Math.sin(x*0.02+t*0.0012+i*1.7)*7;
@@ -168,11 +257,10 @@ function drawBoard(px,py,tilt,kind){
   X.fillStyle='rgba(255,255,255,.5)';
   X.beginPath();X.ellipse(-18,-3,22,4,0,0,7);X.fill();
   X.restore();
-  // 少年
   X.save();X.translate(px,py);X.rotate(tilt*0.5);
-  X.fillStyle='#2c3e50';X.fillRect(-7,-46,14,26);          // 身体
-  X.fillStyle='#f2c9a0';X.beginPath();X.arc(0,-56,10,0,7);X.fill(); // 头
-  X.fillStyle='#3a2e2a';X.beginPath();X.arc(0,-60,10,Math.PI,0);X.fill(); // 头发
+  X.fillStyle='#f6f6f6';X.fillRect(-7,-46,14,26);
+  X.fillStyle='#f2c9a0';X.beginPath();X.arc(0,-56,10,0,7);X.fill();
+  X.fillStyle='#e8b64c';X.beginPath();X.arc(0,-60,10,Math.PI,0);X.fill();
   X.restore();
 }
 function drawStar(sx,sy,t){
@@ -180,166 +268,103 @@ function drawStar(sx,sy,t){
   X.font='22px serif';X.textAlign='center';X.textBaseline='middle';
   X.fillText('🐚',0,0);X.restore();
 }
-function addStar(n){ starCount+=n||1; hud(true,null,goalText()); }
-function goalText(){ return (state.goalLabel||('🐚 '+starCount+' / '+starGoal)); }
-function loseHeart(msg){
-  hearts--; hud(true);
-  if(hearts<=0){ running=false; $('failText').textContent=msg||'别灰心，海浪每天都有脾气。';
-    show('ovFail'); return true; }
-  return false;
+
+/* ================= 失败/暂停辅助 ================= */
+function failSeq(screens,failOverlayMsg){
+  hearts--;hud(true,null,goalText());
+  if(hearts<=0){ running=false;$('failText').textContent=failOverlayMsg;show('ovFail');return; }
+  paused=true;showChat(screens,{onDone:function(){paused=false;lastT=performance.now();}});
+}
+function storyBeat(screens){
+  paused=true;showChat(screens,{onDone:function(){paused=false;lastT=performance.now();}});
 }
 
-/* ================= 输入（点击/触摸 = 屏幕 左半/右半） ================= */
-var touchSide=0;   // -1 左, 1 右, 0 无
-var touchX=0.5;    // 触点归一化 x（Day3 转向）
-var touchDown=false;
-var tapPulse=0;    // 点按脉冲（钓鱼等）
-function gameActive(){ return running; }
-function sideFrom(x){ return x < W/2 ? -1 : 1; }
-function onStart(e){
-  if(!gameActive())return;
-  var t=e.touches?e.touches[0]:e;
-  /* 对话显示时，点屏幕=推进对话（移动端 click 被 preventDefault 吞掉） */
-  var d=$('dlg');
-  if(d.style.display==='block'){
-    d.style.display='none';
-    if(state.onAdvance){ var f=state.onAdvance; state.onAdvance=null; }
-    if(e.cancelable)e.preventDefault();
-    return;
-  }
-  touchSide=sideFrom(t.clientX); tapPulse=1;
-  if(t){ touchX=t.clientX/W; touchDown=true; }
-  if(e.cancelable)e.preventDefault();
-}
-function onMove(e){ if(!gameActive())return;
-  var t=e.touches?e.touches[0]:e; if(t){ touchSide=sideFrom(t.clientX); touchX=t.clientX/W; }
-  if(e.cancelable)e.preventDefault(); }
-function onEnd(e){ touchSide=0; touchDown=false; }
-['touchstart','touchmove'].forEach(function(ev){ document.addEventListener(ev,onStart,{passive:false}); });
-document.addEventListener('touchend',onEnd,{passive:false});
-document.addEventListener('mousedown',onStart);document.addEventListener('mousemove',function(e){ if(touchSide)onMove(e); });
-document.addEventListener('mouseup',onEnd);
-document.addEventListener('keydown',function(e){ if(!running)return;
-  if(e.key==='ArrowLeft'||e.key==='a'){touchSide=-1;touchX=Math.max(0.08,touchX-0.06);}
-  if(e.key==='ArrowRight'||e.key==='d'){touchSide=1;touchX=Math.min(0.92,touchX+0.06);}
-  if(e.key===' '){tapPulse=1;touchDown=true;} });
-document.addEventListener('keyup',function(e){ if(e.key==='ArrowLeft'||e.key==='a'||e.key==='ArrowRight'||e.key==='d')touchSide=0; });
-
-/* 点击继续对话（dlg 显示时点屏幕推进） */
-document.addEventListener('click',function(e){
-  var d=$('dlg');
-  if(d.style.display==='block' && running && !e.target.closest('button')){
-    d.style.display='none';
-    if(state.onAdvance){ var f=state.onAdvance; state.onAdvance=null; f(); }
-  }
-});
-
-/* ================= Day1 桨板平衡 ================= */
-GAME[1]=function(){ return {
-  goalLabel:null,starGoal:6,star:0,
-  tilt:0,tiltV:0,px:0.5,stars:[],wave:0,dolphins:0,dolT:6,done:false,
-  init:function(s){ s.px=0.5;s.stars=[];s.star=0;s.dolphins=0;s.dolT=6;s.done=false;s.tilt=0;s.tiltV=0;
+/* ================= Day1 桨板 ================= */
+GAME[1]=function(){return{
+  goalLabel:null,fi:0,
+  init:function(s){ s.px=0.5;s.stars=[];s.star=0;s.fi=0;s.done=false;s.dolT=0;s.tilt=0;s.tiltV=0;
     for(var i=0;i<6;i++)s.stars.push({x:0.12+Math.random()*0.76,y:0.34+Math.random()*0.5,got:false});
-    starGoal=s.starGoal;starCount=0;state.goalLabel=null;
-    dlg({text:'小金毛的字条：“膝盖放松，像踩在果冻上。左右点按保持平衡，顺手捡起漂来的贝壳。别管我，先看前面。”'});},
+    starGoal=6;starCount=0;state.goalLabel=null;
+    dlg({w:'note',t:'膝盖放松，像踩在果冻上。左右点按保持平衡，顺手捡起漂来的贝壳。别管我，看前面。'});},
   update:function(dt,t,s){
     var wavePush=Math.sin(t*0.0011)*0.5+Math.sin(t*0.0007+2)*0.3;
     s.tiltV+=wavePush*0.055*dt;
     if(touchSide)s.tiltV-=touchSide*0.16*dt;
     s.tiltV*=Math.pow(0.9,dt*60);s.tilt+=s.tiltV*dt;
     if(Math.abs(s.tilt)>0.55){ s.tilt=0;s.tiltV=0;
-      dlg({text:'哗啦！你连人带桨掉进水里。你抹开眼前的咸水：“我连桨板都玩不好，还偏要他陪我出海。”'});
-      if(loseHeart('桨板又翻了。你攥住板沿，赌气不看他：“别等我。我这么慢，只会把两个人都拖在这儿。”'))return;
-    }
+      failSeq(DAYS[1].fails[s.fi++%2],'桨板太难了…没事，浪会等你的。');return; }
     s.px+=touchSide*0.11*dt; s.px=Math.max(0.08,Math.min(0.92,s.px));
     for(var i=0;i<s.stars.length;i++){var st=s.stars[i];
-      if(!st.got&&Math.abs(st.x-s.px)<0.055&&Math.abs(st.y-(0.62))<0.35){st.got=true;addStar();s.star++;}}
+      if(!st.got&&Math.abs(st.x-s.px)<0.055&&Math.abs(st.y-0.62)<0.35){st.got=true;addStar();s.star++;}}
     if(s.star>=s.starGoal&&!s.done){ s.done=true;s.dolT=t; }
     if(s.done&&t-s.dolT>1.2){ finishWin(); }
     s.wave=t;},
   draw:function(t,s){
     drawSea(t);
-    if(s.done){ // Day1 完成动画：贝壳与远处小屋
-      X.font='40px serif';X.textAlign='center';
-      for(var i=0;i<3;i++){ var dx=W*(0.25+i*0.25)+Math.sin(t*0.002+i)*30;
-        var dy=H*0.32-Math.abs(Math.sin(t*0.003+i*2))*46;
-        X.fillText('🐚',dx,dy);} 
-      X.fillStyle='rgba(13,33,55,.6)';var bw=Math.min(W*0.8,340);
-      X.fillRect(W/2-bw/2,H*0.5-26,bw,52);
-      X.fillStyle='#fff';X.font='16px sans-serif';
-      X.fillText('贝壳收集齐了！岸边的小屋方向传来一声轻笑…',W/2,H*0.5+6);
-    }
     for(var i=0;i<s.stars.length;i++)if(!s.stars[i].got)drawStar(s.stars[i].x*W,s.stars[i].y*H,t);
     var by=H*0.62+Math.sin(t*0.002)*6;
     drawBoard(s.px*W,by,Math.max(-0.5,Math.min(0.5,s.tilt*1.4)),'sup');
-    // 倾斜指示
-    X.save();X.globalAlpha=.6;X.fillStyle='#fff';X.font='13px sans-serif';X.textAlign='center';
-    X.fillText('◀ 左点按'+(touchSide<0?' ●':'')+'   保持平衡   右点按 ●'+(touchSide>0?'':''),W/2,H-24);
-    X.restore();},
-  onAdvance:function(){ dlg(null); }
+    /* 小金毛游在左边 */
+    var jx=s.px*W-84,jy=by+18+Math.sin(t*0.003)*5;
+    X.font='26px serif';X.textAlign='center';X.fillText('🐕',jx,jy);
+    X.fillStyle='rgba(13,33,55,.6)';X.font='13px sans-serif';
+    X.fillText('◀ 左点按 · 保持平衡 · 右点按 ▶',W/2,H-24);}
 };};
 
 /* ================= Day2 钓鱼 ================= */
-GAME[2]=function(){ return {
-  goalLabel:null,starGoal:3,phase:'idle',fishX:0.5,fishT:0,biteT:0,biteWin:0,fishY:0,
-  init:function(s){ s.phase='idle';s.star=0;starGoal=3;starCount=0;state.goalLabel=null;
-    dlg({text:'小金毛的字条：“浮标亮出‘！’就收线。钓到小的，轻轻放回去——海里的东西，不全是我们的。别看鱼篓，看浮标。”'});},
+GAME[2]=function(){return{
+  goalLabel:null,mi:0,
+  init:function(s){ s.phase='idle';s.star=0;s.mi=0;starGoal=3;starCount=0;state.goalLabel=null;
+    dlg({w:'note',t:'浮标亮出「！」就收线。钓到小的，轻轻放回去——海里的东西，不全是我们的。别看鱼篓，看浮标。'});},
   update:function(dt,t,s){
     if(s.phase==='idle'){
       s.fishT-=dt;
       if(s.fishT<=0){ s.phase='waiting';s.fishT=1.2+Math.random()*2.2;
         s.biteT=0.8+Math.random()*0.9;s.fishX=0.2+Math.random()*0.6; }
-    } else if(s.phase==='waiting'){
+    }else if(s.phase==='waiting'){
       s.fishT-=dt;
       if(s.fishT<=0){ s.phase='bite';s.biteWin=s.biteT; }
-    } else if(s.phase==='bite'){
+    }else if(s.phase==='bite'){
       s.biteWin-=dt;
       if(s.biteWin<=0){ s.phase='idle';s.fishT=1+Math.random()*1.5;
-        dlg({text:'“！”暗下，鱼影脱钩而去。你把线绕回指间：“有他看着，我也还是会搞砸。早知道不该逞强。”'}); }
-    } else if(s.phase==='reel'){
+        storyBeat(DAYS[2].fails[s.mi++%2]); }
+    }else if(s.phase==='reel'){
       s.fishY+=0.5*dt;
       if(s.fishY>=1){ s.phase='idle';s.fishT=1.4+Math.random();addStar();s.star++;
-        var catchLines=[
-          '第一尾银亮的成鱼翻进鱼篓。你下意识朝船尾看了一眼；小金毛正低头理线。至少，这回不是空钩。',
-          '第二尾鱼压弯鱼竿。你稳稳收线，心里那句“我不行”松了一点。小金毛没夸你，只在旁边点了点头。',
-          '第三尾鱼跃出晚霞，计数终于满了。你先确认它已经长大，才轻声说：“这次，我没有乱来。”'];
-        dlg({text:catchLines[Math.min(2,s.star-1)]}); 
+        dlg({w:'n',t:DAYS[2].catches[Math.min(2,s.star-1)]});
         if(s.star>=3)finishWin(); }
     }
     if(tapPulse&&s.phase==='bite'){ s.phase='reel';s.fishY=0;dlg(null); }
-    else if(tapPulse&&s.phase==='waiting'){ dlg({text:'还早点，稳住～ 等「！」亮起再拉 🎣'}); }
+    else if(tapPulse&&s.phase==='waiting'){ dlg({w:'n',t:'还早点，稳住～ 等「！」亮起再拉。'}); }
     tapPulse=0;},
   draw:function(t,s){
     drawSea(t);
-    X.fillStyle='#ffd166';X.beginPath();X.arc(W*0.72,H*0.3,34,0,7);X.fill(); // 落日
+    X.fillStyle='#ffd166';X.beginPath();X.arc(W*0.72,H*0.3,34,0,7);X.fill();
     X.fillStyle='rgba(255,209,102,.25)';X.fillRect(0,H*0.34,W,H*0.66);
     var bx=W*0.3,by=H*0.66;
     drawBoard(bx,by,0,'boat');
-    // 鱼线
     X.strokeStyle='rgba(255,255,255,.7)';X.lineWidth=1.5;
     var fx=s.phase==='idle'?W*0.3:s.fishX*W;
     var fy=(s.phase==='reel'?H*(0.86-0.5*Math.min(1,s.fishY)):H*0.86);
     X.beginPath();X.moveTo(bx+40,by-8);X.quadraticCurveTo(bx+90,H*0.8,fx,fy);X.stroke();
-    // 浮漂
     X.fillStyle='#ff5c5c';X.beginPath();X.arc(fx,fy,6,0,7);X.fill();
     if(s.phase==='bite'){ X.font='34px sans-serif';X.textAlign='center';
       X.fillStyle='#ffeb3b';X.strokeStyle='#c62828';X.lineWidth=3;
       X.strokeText('！',fx,fy-30);X.fillText('！',fx,fy-30); }
-    if(s.phase==='reel'){ X.font='26px serif';X.fillText('🍾',fx,fy);
+    if(s.phase==='reel'){ X.font='26px serif';X.fillText('🐟',fx,fy);
       X.fillStyle='#fff';X.font='13px sans-serif';X.fillText('收线中…',fx,fy+22);}
     X.fillStyle='rgba(13,33,55,.6)';X.font='13px sans-serif';X.textAlign='center';
-    X.fillText(s.phase==='bite'?'点击屏幕！':'等待鱼咬钩…',W/2,H-24);},
-  onAdvance:function(){}
+    X.fillText(s.phase==='bite'?'点击屏幕！':'等待鱼咬钩…',W/2,H-24);}
 };};
 
 /* ================= Day3 冲浪 ================= */
-GAME[3]=function(){ return {
-  goalLabel:'🏄 向前 100m',starGoal:1,dist:0,speed:4,obs:[],stars:[],done:false,px:0.5,
-  init:function(s){ s.dist=0;s.speed=4;s.obs=[];s.stars=[];s.done=false;s.px=0.5;
-    for(var i=0;i<7;i++)s.stars.push({d:8+i*12,lane:Math.random()<0.5?-1:1,got:false});   // 8..80m
-    for(var j=0;j<6;j++)s.obs.push({d:14+j*15,lane:Math.random()<0.5?-1:1,hit:false});     // 14..89m
+GAME[3]=function(){return{
+  goalLabel:'🏄 向前 100m',fi:0,
+  init:function(s){ s.dist=0;s.speed=4;s.obs=[];s.stars=[];s.done=false;s.px=0.5;s.fi=0;
+    for(var i=0;i<7;i++)s.stars.push({d:8+i*12,lane:Math.random()<0.5?-1:1,got:false});
+    for(var j=0;j<6;j++)s.obs.push({d:14+j*15,lane:Math.random()<0.5?-1:1,hit:false});
     starGoal=1;starCount=0;state.goalLabel='🏄 向前 100m';
-    dlg({text:'浮标背面有他的字：“浪不是墙，是会动的门。左右滑动转向、加速，看清空隙再冲。别抢快，认清记号。”'});},
+    dlg({w:'note',t:'浪不是墙，是会动的门。左右滑动转向、加速，看清空隙再冲。只走画了鱼的浮标。'});},
   update:function(dt,t,s){
     var steer=touchDown?touchX:null;
     if(steer!==null){ s.px+=(steer-s.px)*Math.min(1,3.2*dt); s.speed+=4.5*dt; }
@@ -348,8 +373,7 @@ GAME[3]=function(){ return {
     s.dist+=s.speed*dt;
     for(var i=0;i<s.obs.length;i++){var o=s.obs[i];
       if(!o.hit&&Math.abs(o.d-s.dist)<3&&Math.abs(0.5+o.lane*0.22-s.px)<0.16){ o.hit=true;
-        dlg({text:'砰！板头撞上浮标，浪花兜头落下。你咬着牙：“胆小鬼连浪都欺负。绕这么远，还是会撞。”'});
-        if(loseHeart('又一次被浪推回原处。你趴在板上喘：“躲开礁石也不算勇敢。我只是在给他添一条更长的路。”'))return; }}
+        failSeq(DAYS[3].fails[s.fi++%2],'浪太大了…没事，礁区会一直等你。');return; }}
     for(var j=0;j<s.stars.length;j++){var st=s.stars[j];
       if(!st.got&&Math.abs(st.d-s.dist)<3&&Math.abs(0.5+st.lane*0.22-s.px)<0.16){ st.got=true;addStar(); }}
     if(s.dist>=100&&!s.done){ s.done=true;finishWin(); }
@@ -363,17 +387,17 @@ GAME[3]=function(){ return {
     var firstMark=Math.ceil(s.dist/12)*12;
     for(var m=firstMark;m<=s.dist+110;m+=12){ if(m>100)break;
       var dd=m-s.dist;
-      var p=1-dd/110, y=H*0.3+(H*0.62)*p*p, half=(W*0.44)*p*p;
+      var p=1-dd/110,y=H*0.3+(H*0.62)*p*p,half=(W*0.44)*p*p;
       X.beginPath();X.moveTo(W*0.5-half,y);X.lineTo(W*0.5+half,y);X.stroke();
       X.fillStyle='rgba(255,255,255,.6)';X.font='11px sans-serif';X.textAlign='left';
       X.fillText(m+'m',W*0.5+half+6,y+4);}
     X.restore();
     var sx=s.px*W;
-    for(var j=0;j<s.stars.length;j++){var st=s.stars[j];if(st.got)continue;
+    for(var j2=0;j2<s.stars.length;j2++){var st=s.stars[j2];if(st.got)continue;
       var d1=st.d-s.dist;if(d1<-3||d1>110)continue;
       var p1=1-d1/110,y1=H*0.3+(H*0.62)*p1*p1,half1=(W*0.44)*p1*p1;
       drawStar(W*0.5+st.lane*half1*0.5,y1,t);}
-    for(var i=0;i<s.obs.length;i++){var o=s.obs[i];if(o.hit)continue;
+    for(var i2=0;i2<s.obs.length;i2++){var o=s.obs[i2];if(o.hit)continue;
       var d2=o.d-s.dist;if(d2<-3||d2>110)continue;
       var p2=1-d2/110,y2=H*0.3+(H*0.62)*p2*p2,half2=(W*0.44)*p2*p2;
       X.font=(14+p2*26)+'px serif';X.textAlign='center';
@@ -383,137 +407,197 @@ GAME[3]=function(){ return {
     X.beginPath();X.ellipse(sx,H*0.86+8,30+spd*26,7,0,0,7);X.fill();
     drawBoard(sx,H*0.86,-spd*0.3+Math.sin(t*0.006)*0.04,'surf');
     X.fillStyle='rgba(13,33,55,.6)';X.font='13px sans-serif';X.textAlign='center';
-    X.fillText(touchDown?'⬇ 压低加速！左右滑动转向':'按住屏幕＝加速转向',W/2,H-24);},
-  onAdvance:function(){}
+    X.fillText(touchDown?'⬇ 压低加速！左右滑动转向':'按住屏幕＝加速转向',W/2,H-24);}
 };};
 
-/* ================= 流程控制 ================= */
-var cur=null;      // 当前关对象
-var tapUsed=false;
-
+/* ================= V5.1 剧本数据（Opus5 初稿 + Sol/DeepSeek 审稿修订） ================= */
+var PRO=[
+  [{w:'n',t:'（收工的码头。小金毛蹲在船头，把缆绳解开，又系上——第三次。）'},
+   {w:'b',t:'你到底在系什么？'},
+   {w:'j',t:'绳子起毛了。'},
+   {w:'n',t:'（你伸手去接绳子。他挡开——）'},
+   {w:'j',t:'你不会。'},
+   {w:'b',t:'跟你出海，真的好累。'},
+   {w:'n',t:'（他系绳的手停了半拍，没回头：「……早点睡。」）'}],
+  [{w:'n',t:'（天没亮透，船已经装好了。你的水壶插在他背包侧兜，干粮压在最上层。）'},
+   {w:'b',t:'给我吧，我自己拿得动。'},
+   {w:'j',t:'不重。'},
+   {w:'n',t:'（他把背包甩上肩，走在靠海那一侧。）'}],
+  [{w:'n',t:'（出港前，他撕下一页字条折好，塞进你救生衣口袋。小本子贴身收好。）'},
+   {w:'b',t:'你就不能直接说？'},
+   {w:'j',t:'（写字板）「不能。」'},
+   {w:'note',t:'「你先划，别回头。我游你左边。」'}],
+  [{w:'n',t:'（静水湾看着很乖，浪都排在很远的地方。礁区尽头，灯塔刚收起昨夜的光。）'},
+   {w:'b',t:'那边是什么？'},
+   {w:'j',t:'（写字板）「以后再说。」'},
+   {w:'n',t:'（他摆摆尾巴，先游了出去。）'}]
+];
 var DAYS={
-  1:{tag:'DAY 1 · 桨板',title:'静水湾的桨板',pic:null,
-     story:'你划上桨板，小金毛游在旁边。他今天慢得反常，总落后半个身位。你想：昨晚那句话，终于把他的劲也耗没了。',
-     how:'🖐 点按屏幕左/右两侧保持平衡 · 捡满 6 个贝壳'},
-  2:{tag:'DAY 2 · 钓鱼',title:'让出的钓位',pic:null,
-     story:'三次收线，成绩仍是三只空钩——前两尾幼鱼放回海里，不算；第三钩什么也没有。你不敢看他，觉得丢人。',
-     how:'🎣 等「！」亮起时点击屏幕收线 · 钓上 3 尾鱼'},
-  3:{tag:'DAY 3 · 冲浪',title:'探好的远路',pic:'fish',
-     story:'直线最近，你却绕开每一片礁区，把路线拉成弯月。你怕他觉得你胆小，更怕自己真的只是胆小。',
-     how:'🏄 按住屏幕＝压低加速 · 松开＝减速 · 冲过 100 米 · 小心浮标 🛟'}
+  1:{tag:'DAY 1 · 桨板',title:'静水湾的桨板',
+     how:'🖐 点按屏幕左/右两侧保持平衡 · 捡满 6 个贝壳',
+     memory:'挡浪的背影',
+     intro:[
+      [{w:'n',t:'（他游在你左边，总慢半个身位。你慢，他也慢；你加速，他还是半个身位。）'},
+       {w:'b',t:'昨晚……'},
+       {w:'j',t:'（写字板）「看前面。」'},
+       {w:'n',t:'（你把后半句咽了回去。）'}],
+      [{w:'n',t:'（你放慢，他就加速；你假装看云，他又落回半个身位后。）'},
+       {w:'b',t:'今天要不就到这儿吧。'},
+       {w:'j',t:'（写字板）「贝壳还没捡完。」'}],
+      [{w:'n',t:'（远处，一线白浪正慢慢斜过来。）'},
+       {w:'j',t:'（写字板）「字条上的话，都算数。」'}]],
+     fails:[
+      [{w:'n',t:'（哗啦——板一歪，你抱着板浮上来，呛出一口咸水。）'},
+       {w:'b',t:'咳咳……我自己能行。'},
+       {w:'n',t:'（他游过来把板扶正，什么也没说，又退回左边。）'}],
+      [{w:'n',t:'（又翻。这回你扒着板沿，半天没往上爬。）'},
+       {w:'b',t:'你先回吧。我慢慢划，不用等。'},
+       {w:'n',t:'（你没看他，只是把救生衣的绑带又紧了紧。）'},
+       {w:'n',t:'（一道斜浪扑过来，砸在他左肩上——他晃了晃，你的板，只轻轻颠了一下。）'}]],
+     failMsg:'桨板太难了…没事，浪会等你的。',
+     win:[
+      [{w:'n',t:'（第十枚贝壳落进网兜时，浪头小了——像有人把浪都拦在了你看不见的那一边。）'},
+       {w:'n',t:'（他还在左边，比早上更慢，左肩湿到了尾巴根。）'},
+       {w:'b',t:'回家你就告诉我，到底怎么了。'},
+       {w:'j',t:'（写字板）「没怎么。」'}],
+      [{w:'n',t:'（【他的小本子】「静水湾下午转侧浪，从左来。我游小白左边，浪先砸我——他那块板，一天就只晃那几下。左肩湿一点，不亏。」）'},
+       {w:'n',t:'（末行被爪印蹭得发毛，像写的时候犹豫了很久：「别让小白知道。」）'}]]},
+  2:{tag:'DAY 2 · 钓鱼',title:'让出的钓位',
+     how:'🎣 等「！」亮起时点击屏幕收线 · 钓上 3 尾鱼',
+     memory:'让出的钓位',
+     intro:[
+      [{w:'n',t:'（天刚亮，旁边的窝是空的。半小时后他回来了，毛湿透，什么也没带。）'},
+       {w:'b',t:'一大早去哪儿了？'},
+       {w:'j',t:'「……散步。」'},
+       {w:'n',t:'（他的尾巴垂着，出卖了他。天边，灯塔还亮着最后一下。）'}],
+      [{w:'n',t:'（礁石边，他提起你的饵桶，放到那块平整的石头上。）'},
+       {w:'b',t:'那是你的位。给我干嘛？'},
+       {w:'j',t:'「石头边，鱼多。」'},
+       {w:'n',t:'（说完，他自己坐到光秃秃的沙嘴上。）'}],
+      [{w:'n',t:'（一上午，三竿，三记空钩。饵没了，钩是光的。沙嘴那头，他的浮标一动也不动。）'}]],
+     fails:[
+      [{w:'n',t:'（浮标点了点，你手快，一提——空钩，饵缺了个月牙形的口。）'},
+       {w:'b',t:'你说石头边鱼多——鱼呢？果然，给我哪儿都白搭。'},
+       {w:'n',t:'（沙嘴那头，他抬了下头，又低下去。）'}],
+      [{w:'n',t:'（「！」亮起来时你正看着别处，等回头，水纹都平了。）'},
+       {w:'b',t:'散步的事你不说，这个你也不说。'},
+       {w:'j',t:'（写字板，写得很慢）「看浮标。」'}]],
+     failMsg:'又是空钩…没关系，潮水会变的。',
+     catches:[
+      '第一尾银亮的成鱼翻进鱼篓。你下意识朝船尾看了一眼；小金毛正低头理线。至少，这回不是空钩。',
+      '第二尾鱼压弯鱼竿。你稳稳收线，心里那句「我不行」松了一点。小金毛没夸你，只在旁边点了点头。',
+      '第三尾鱼跃出晚霞。你先确认它已经长大，才轻轻收线——这次，整片海都站在你这边。'],
+     win:[
+      [{w:'n',t:'（日头爬过礁尖，水色忽然沉了一层。沙嘴上，他放下了什么，坐直了。）'},
+       {w:'n',t:'（浮标猛地一沉——「！」一尾手掌长的银鱼出水。你想起字条，手一松，把它轻轻送回海里。）'},
+       {w:'n',t:'（沙嘴上，有人极小声地「啊」了一下。）'}],
+      [{w:'n',t:'（他的背囊翻倒在礁石上，滚出一只饵料盒——空的，刮得干干净净。）'},
+       {w:'n',t:'（他伸手去扣，耳朵已经贴到了脑后。）'},
+       {w:'j',t:'（很小声）「……跟窝里那群，一个脾气。」'},
+       {w:'b',t:'你说什么？'},
+       {w:'j',t:'「没什么。」'}]]},
+  3:{tag:'DAY 3 · 冲浪',title:'探好的远路',
+     how:'🏄 按住屏幕＝加速转向 · 松开＝减速 · 冲过 100 米 · 只走画鱼的浮标',
+     memory:'探好的远路',
+     intro:[
+      [{w:'n',t:'（早上，他走路有点偏。右前爪缠着布条。你低头看了看自己的救生衣——侧带，短了一截。）'},
+       {w:'b',t:'爪子怎么了？'},
+       {w:'j',t:'「踩到贝壳了。」'},
+       {w:'n',t:'（昨晚涨的是大潮。谁也没再说话。）'}],
+      [{w:'b',t:'大浪那边，你自己去吧。我在浅处等你。'},
+       {w:'n',t:'（他没答话，把你的板拖回来，把字条按进你爪心，然后游向外圈。）'},
+       {w:'b',t:'……我等你。'},
+       {w:'n',t:'（他背对着你，尾巴尖动了一下。）'}],
+      [{w:'n',t:'（礁区外圈，有道白痕远远绕着你画了个弧。）'}]],
+     fails:[
+      [{w:'n',t:'（板头磕上没画鱼的浮标，你抱板浮上来，咸水糊了满脸。）'},
+       {w:'b',t:'绕这么远，还是撞。'},
+       {w:'n',t:'（外圈有道白痕一闪而过——他绕着整片礁区，游了个大弧。）'}],
+      [{w:'n',t:'（一道浪把你按回起点，水从鼻腔里呛出来。）'},
+       {w:'b',t:'算了……你自己冲吧。我看着就行。'},
+       {w:'n',t:'（他不走，就泡在外圈，尾巴一下一下拍水。）'}]],
+     failMsg:'浪太大了…没事，礁区会一直等你。',
+     win:[
+      [{w:'n',t:'（你贴着画鱼的浮标，从最后一道浪的空隙里穿了出去。风声在耳朵里炸开，那口气直到板头落地才吐出来。）'},
+       {w:'n',t:'（回头——最后一个浮标上刻的不是鱼，是两只歪歪扭扭的小狗，并排。）'},
+       {w:'b',t:'……这刻的是什么？'},
+       {w:'n',t:'（外圈的水痕，正慢慢向你合拢。）'}],
+      [{w:'n',t:'（【天没亮时】他摸黑游出港，沿礁区一路过去，在每个浮标上停一下——伸爪，刻一条鱼。）'},
+       {w:'n',t:'（一个浪头把他拍向礁盘，爪垫在礁石上蹭出一道口子。他甩甩爪，接着刻。）'},
+       {w:'n',t:'（最后一个浮标前，他停了很久，多刻了几笔。）'}]]}
 };
+var ENDINGS=[
+  [{w:'n',t:'（三天走完。夕阳把海烫成铜红，两块板并排随潮漂着，谁都没提回家。两条航迹一会儿并住，一会儿又分开。）'},
+   {w:'b',t:'今晚潮多大？'},
+   {w:'j',t:'「大潮。」'}],
+  [{w:'n',t:'（咚。一只瓶子撞上船尾拖着的旧缆绳，弹了两下。瓶口缠着褪色的蓝线——他的耳朵先竖了起来。）'},
+   {w:'n',t:'（瓶塞「啵」地一声。倒出一张卷得很紧的纸，和半颗磨圆了棱角的玻璃弹珠。）'}],
+  [{w:'n',t:'（纸展开，是小孩的字，和一幅更小孩的涂鸦：两只歪狗并排站着，一只画得快，一只画得慢。）'},
+   {w:'n',t:'（「谁绕路，谁要讲。谁走慢了，不许别人替他道歉。两个爪印为证。」）'},
+   {w:'b',t:'……这是咱们小时候埋的。'},
+   {w:'j',t:'「嗯。」'}],
+  [{w:'b',t:'那尾鱼……那道门……我三天里干成的每件事，都是你半夜先替我干了一遍？'},
+   {w:'j',t:'「……」'},
+   {w:'b',t:'我还在那儿恨自己没用——恨对了。'},
+   {w:'j',t:'「不——」（又咽回去，只把本子往前推了推。）'}],
+  [{w:'n',t:'（本子最后一页，画着三天的海图：三条航路都绕了个大圈，圈心里，蹲着一只小狗。）'},
+   {w:'j',t:'「我数过。你三天，摔了六回。」'},
+   {w:'j',t:'「别的我不会，就会趁你睡着，多做一点。」'}],
+  [{w:'n',t:'（缆绳把两块板轻轻系在一起。两条航迹并成一条，那道缝里，夕阳正往下沉。）'},
+   {w:'b',t:'「跟你出海，真的好累」——这句我收回。'},
+   {w:'b',t:'以后绕路，讲给你听。'},
+   {w:'j',t:'「嗯。慢，也讲。」'}],
+  [{w:'n',t:'（他把玻璃弹珠按回你爪心。）'},
+   {w:'j',t:'「这个，归你。」'},
+   {w:'n',t:'（瓶底还有一行没泡烂的小字——）'},
+   {w:'note',t:'真正的礼物藏在【彩蛋位置】。去那里找漂流瓶，再输入瓶中暗号。'}]
+];
+
+/* ================= 流程控制 ================= */
+var cur=null,storyMode=false;
 
 function startDay(){
   hearts=3;starCount=0;cur=GAME[day]();state=cur;
-  var d=DAYS[day];
-  $('briefDay').textContent=d.tag;$('briefTitle').textContent=d.title;
-  $('briefStory').textContent=d.story;$('briefHow').textContent=d.how;
-  show('ovBrief');
-  $('btnBriefGo').textContent=storyMode?'继续 ▸':'出发 ▸';
-  $('winPic').style.display='none';
+  hud(false);
+  showChat(DAYS[day].intro,{goLabel:storyMode?'继续 ▸':'出发 ▸',onDone:function(){
+    if(storyMode){ finishWin(); return; }
+    hideAll();hud(true,DAYS[day].tag,DAYS[day].how);
+    cur.init(state);running=true;paused=false;lastT=performance.now();
+    cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
+  }});
 }
-var storyMode=false;   // 剧情模式：跳过玩法，直接过剧情
-$('btnBriefGo').addEventListener('click',function(){
-  hideAll();
-  if(storyMode){ dlg(null);hud(false);finishWin(); return; }
-  hud(true,DAYS[day].tag);
-  cur=GAME[day]();state=cur;
-  cur.init(state);running=true;lastT=performance.now();
-  cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
-});
-
 function finishWin(){
   running=false;dlg(null);hud(false);
-  if(day===1)memories.push('挡浪的背影');
-  if(day===2)memories.push('让出的钓位');
-  if(day===3)memories.push('探好的远路');
-  var REPLAY={
-    1:{title:'静水湾的桨板 ✅',mine:'最后一枚贝壳落进网袋。小金毛仍慢吞吞游在旁边。你以为，他还在为昨晚那句话闹别扭。',
-       his:'侧浪正斜撞过来。他故意游到你侧前方，让浪先砸在自己肩背；落到你的板下，只剩轻轻一晃。'},
-    2:{title:'让出的钓位 ✅',mine:'你还记着那三只空钩，不敢看他。余光里，他嘴角动了一下。你以为下一秒，就会听见嘲笑。',
-       his:'前天他也钓空过，才摸清两处水势：他的钓位压着暗流，鱼群全在你这边。他把好位置让给你，嘴角动，是在替你数到三。'},
-    3:{title:'探好的远路 ✅',mine:'你沿浮标绕出一个大弧，才越过最后一道浪。别人走直线，你走远路；你以为，自己只是怂。',
-       his:'你正逐个穿过带爪痕的浮标。他想起昨天独自绕完全程：直线下藏着礁石；你的“远路”，是他探好并做了记号的安全路。'}
-  }[day];
-  $('winText').innerHTML='<b style="color:#ffd166">'+REPLAY.title+'</b><br><br>'+
-    '<div style="text-align:left;opacity:.72;font-size:13.5px;color:#9fb8cc">你刚才以为的——</div>'+
-    '<div style="text-align:left">'+REPLAY.mine+'</div><br>'+
-    '<div style="text-align:left;color:#ffd166;font-size:13.5px">🔄 那一秒，从小金毛的眼睛看——</div>'+
-    '<div style="text-align:left">'+REPLAY.his+'</div>';
-  show('ovWin');
+  memories.push(DAYS[day].memory);
+  var after=day===3?function(){startEnding();}:function(){day++;startDay();};
+  showChat(DAYS[day].win,{goLabel:day===3?'尾声 ▸':'继续 ▸',onDone:after});
 }
-$('btnWinNext').addEventListener('click',function(){
-  if(day===3){ startEnding(); return; }
-  day++;startDay();
-});
-
+function startEnding(){
+  hud(false);
+  showChat(ENDINGS,{goLabel:'完成 ✓',onDone:function(){
+    $('endPic').src=ASSET.ending.indexOf('__')===0?'':ASSET.ending;
+    show('ovEnd');
+  }});
+}
 $('btnRetry').addEventListener('click',function(){
-  hearts=3;hideAll();hud(true,DAYS[day].tag);cur.init(state);running=true;lastT=performance.now();
+  hearts=3;hideAll();paused=false;
+  hud(true,DAYS[day].tag,DAYS[day].how);
+  cur.init(state);running=true;lastT=performance.now();
 });
 $('btnSkip').addEventListener('click',function(){
-  hearts=3;hideAll();hud(false);finishWin();
+  hearts=3;hideAll();paused=false;finishWin();
+});
+$('btnReplay').addEventListener('click',function(){
+  day=1;memories=[];storyMode=false;startDay();
 });
 
-var ENDINGS=[
-  '夕阳把海铺成铜红。你们趴在各自的板上随潮漂流，两条航迹一会儿贴近，一会儿分开，像谁都想开口，又各自拐弯。',
-  '一只裹着旧蓝线的漂流瓶卡在两块板之间。小金毛伸爪，你也同时按住瓶身——这是你们早年埋下、说好以后再挖的时间胶囊。',
-  '瓶塞一开，先滚出一枚干瘪的菠萝蜜籽。纸条上两只歪狗并排站着，一只画得快，一只画得慢；下面是你小时候的字。',
-  '你翻过纸条。背面是当年轮流写的约定：“谁绕路，谁要讲为什么；谁没跟上，另一个不许替他道歉。”盐水晕开两个爪印。',
-  '小金毛先开口：“我没生气。我怕那些慢、让位、绕路，让你更累。”你攥着湿纸条：“我也怕自己总要你照顾，才说了那句气话。”',
-  '他把板划近一点：“那以后，绕路就说。”你点头：“我也说。”两道航迹慢慢并成一条。<span style="color:#ffd166">同行不是同速，是愿意解释自己的绕路。</span>',
-  '<span style="color:#ffd166">真正的礼物藏在【彩蛋位置】。</span><br>去那里找漂流瓶，再输入瓶中暗号。'
-];
-var endStep=0;
-function startEnding(){
-  hud(false);endStep=0;
-  $('endPic').src=ASSET.ending.indexOf('__')===0?'':ASSET.ending;
-  $('endText').innerHTML=ENDINGS[0]+'<br><span class="next" style="float:right;font-size:12px;opacity:.6">点击继续 ▸</span>';
-  $('btnReplay').style.display='none';
-  show('ovEnd');
-  $('ovEnd').onclick=function(e){
-    if(e.target.closest('button'))return;
-    endStep++;
-    if(endStep<ENDINGS.length){
-      $('endPic').style.display=endStep>=5?'none':'block';
-      $('endText').innerHTML=ENDINGS[endStep]+
-        '<br><span style="float:right;font-size:12px;opacity:.6">'+(endStep<ENDINGS.length-1?'点击继续 ▸':'')+'</span>';
-    } else {
-      $('ovEnd').onclick=null;
-      $('endText').innerHTML='🔵 ✓ 气话与沉默<br>🔵 ✓ 挡浪的背影<br>🔵 ✓ 让出的钓位<br>🔵 ✓ 探好的远路<br>🔵 ✓ 并成的航迹'+
-        '<br><br><span style="opacity:.75;font-size:13px">🌊 《我们不必同速》· 完</span>';
-      $('btnReplay').style.display='inline-block';
-    }
-  };
+/* 序章入口 */
+function beginPrologue(){
+  $('coverPic').src=ASSET.cover.indexOf('__')===0?'':ASSET.cover;
+  showChat(PRO,{onDone:function(){day=1;startDay();}});
 }
-$('btnReplay').addEventListener('click',function(){ day=1;memories=[];startDay(); });
-
-/* 序章 */
-var proStep=0;
-var PRO=[
-  '昨夜收拾装备时，你嫌他第三次重系缆绳，脱口而出：“跟你出海真累。”他没回嘴，只把绳结拉紧，又检查了一遍。',
-  '天刚亮，你把杨桃、蒲桃塞进帆布袋；他默默添了莲雾和木瓜干。光明青野间营地那群地里跑的鸡追到码头，谁也没说早安。',
-  '静水湾看着温顺，水下却有斜推的侧浪。你抱起桨板；小金毛扣好救生衣。先过这片海，再说那句没说出口的话。',
-  '桨板上压着字条：“去静水湾，别回头等我。我会跟上。”末尾画了个歪箭头，指向水面——这是他要你先出发的暗号。'
-];
-$('btnStart').addEventListener('click',function(){
-  storyMode=false;
-  $('coverPic').src=ASSET.cover.indexOf('__')===0?'':ASSET.cover;
-  $('bottlePic').src=ASSET.bottle.indexOf('__')===0?'':ASSET.bottle;
-  proStep=0;$('proText').innerHTML=PRO[0];
-  show('ovPrologue');
-});
-$('btnStory').addEventListener('click',function(){
-  storyMode=true;
-  $('coverPic').src=ASSET.cover.indexOf('__')===0?'':ASSET.cover;
-  $('bottlePic').src=ASSET.bottle.indexOf('__')===0?'':ASSET.bottle;
-  proStep=0;$('proText').innerHTML=PRO[0];
-  show('ovPrologue');
-});
-$('btnProNext').addEventListener('click',function(){
-  proStep++;
-  if(proStep<PRO.length){ $('proText').innerHTML=PRO[proStep]; }
-  else { day=1;startDay(); }
-});
+$('btnStart').addEventListener('click',function(){ storyMode=false;beginPrologue(); });
+$('btnStory').addEventListener('click',function(){ storyMode=true;beginPrologue(); });
 
 /* ================= 主循环 ================= */
 function loop(now){
@@ -521,14 +605,15 @@ function loop(now){
   var dt=Math.min(0.05,(now-lastT)/1000);lastT=now;
   var t=now;
   if(cur){
-    if($('dlg').style.display==='block'){ cur.draw(t,state); }  // 对话时冻结
-    else { cur.update(dt,t,state); if(running)cur.draw(t,state); }
+    var frozen=paused||$('dlg').style.display==='block';
+    if(frozen){ cur.draw(t,state); }
+    else { cur.update(dt,t,state); if(running&&!paused)cur.draw(t,state); }
   }
   if(running)raf=requestAnimationFrame(loop);
 }
 
 /* 调试钩子 */
-window._dbg={ get:function(){return {day:day,hearts:hearts,starCount:starCount,starGoal:starGoal,running:running};},
+window._dbg={ get:function(){return {day:day,hearts:hearts,starCount:starCount,starGoal:starGoal,running:running,paused:paused};},
   state:function(){ return {phase:state.phase,px:state.px,tilt:state.tilt,tiltV:state.tiltV,
     dist:state.dist,stars:state.stars,obs:state.obs,star:starCount}; },
   win:function(){ if(running)finishWin(); },

@@ -240,14 +240,14 @@ GAME[1]=function(){ return {
   init:function(s){ s.px=0.5;s.stars=[];s.star=0;s.dolphins=0;s.dolT=6;s.done=false;s.tilt=0;s.tiltV=0;
     for(var i=0;i<6;i++)s.stars.push({x:0.12+Math.random()*0.76,y:0.34+Math.random()*0.5,got:false});
     starGoal=s.starGoal;starCount=0;state.goalLabel=null;
-    dlg({text:'爷爷的字条：「站稳了，去看白海豚。」—— 左右点按保持平衡，顺手捡海星 ⭐'});},
+    dlg({text:'爷爷的字条：“膝盖放松，别硬得像晒鱼架。左右点按保持平衡，顺手捡海星 ⭐。站稳了，替我吹声口哨。”'});},
   update:function(dt,t,s){
     var wavePush=Math.sin(t*0.0011)*0.5+Math.sin(t*0.0007+2)*0.3;
     s.tiltV+=wavePush*0.055*dt;
     if(touchSide)s.tiltV-=touchSide*0.16*dt;
     s.tiltV*=Math.pow(0.9,dt*60);s.tilt+=s.tiltV*dt;
     if(Math.abs(s.tilt)>0.55){ s.tilt=0;s.tiltV=0;
-      dlg({text:'哗啦——掉进水里了！小心保持平衡 ⚖️'});
+      dlg({text:'哗啦——小澈栽进海里，抹了把脸：“这板肯定记仇！”先稳住重心，再慢慢追上海星。'});
       if(loseHeart('平衡太难了…没事，再来。'))return;
     }
     s.px+=touchSide*0.11*dt; s.px=Math.max(0.08,Math.min(0.92,s.px));
@@ -282,7 +282,7 @@ GAME[1]=function(){ return {
 GAME[2]=function(){ return {
   goalLabel:null,starGoal:3,phase:'idle',fishX:0.5,fishT:0,biteT:0,biteWin:0,fishY:0,
   init:function(s){ s.phase='idle';s.star=0;starGoal=3;starCount=0;state.goalLabel=null;
-    dlg({text:'爷爷的字条：「黄昏的鱼最聪明，等它咬稳了再拉。」—— 鱼咬钩闪「！」时，立刻点屏幕！'});},
+    dlg({text:'爷爷的字条：“别跟鱼较劲，它比你有空。浮标亮出‘！’时，立刻点屏幕收线。早了吓跑它，晚了它就笑你。”'});},
   update:function(dt,t,s){
     if(s.phase==='idle'){
       s.fishT-=dt;
@@ -294,11 +294,11 @@ GAME[2]=function(){ return {
     } else if(s.phase==='bite'){
       s.biteWin-=dt;
       if(s.biteWin<=0){ s.phase='idle';s.fishT=1+Math.random()*1.5;
-        dlg({text:'鱼吐了个泡泡就走了…下次要更快一点点 🫧'}); }
+        dlg({text:'鱼吐个泡泡溜走了。小澈咬牙：“笑吧，下一尾我让你笑不出来。”等“！”亮起，再利落收线 🫧'}); }
     } else if(s.phase==='reel'){
       s.fishY+=0.5*dt;
       if(s.fishY>=1){ s.phase='idle';s.fishT=1.4+Math.random();addStar();s.star++;
-        dlg({text:'拉上来了！一尾闪着夕阳光的金鱼 🐟✨ ('+s.star+'/3)'}); 
+        dlg({text:'拉上来了！一尾金鱼披着晚霞，在船边甩出一串碎金。小澈得意地扬眉：“谁笑谁还不一定呢。”🐟✨ ('+s.star+'/3)'}); 
         if(s.star>=3)finishWin(); }
     }
     if(tapPulse&&s.phase==='bite'){ s.phase='reel';s.fishY=0;dlg(null); }
@@ -334,7 +334,7 @@ GAME[3]=function(){ return {
     for(var i=0;i<7;i++)s.stars.push({d:8+i*12,lane:Math.random()<0.5?-1:1,got:false});   // 8..80m
     for(var j=0;j<6;j++)s.obs.push({d:14+j*15,lane:Math.random()<0.5?-1:1,hit:false});     // 14..89m
     starGoal=1;starCount=0;state.goalLabel='🏄 向前 100m';
-    dlg({text:'爷爷的字条：「浪来的时候不要怕，压低身子，穿过它。」—— 按住屏幕左右滑动＝转向+加速，松开＝减速'});},
+    dlg({text:'爷爷的字条：“浪不是墙，是会动的门。按住屏幕左右滑动来转向、加速；看清空隙再过。勇敢不是硬撞，逞强才会撞浮标。”'});},
   update:function(dt,t,s){
     var steer=touchDown?touchX:null;
     if(steer!==null){ s.px+=(steer-s.px)*Math.min(1,3.2*dt); s.speed+=4.5*dt; }
@@ -343,7 +343,7 @@ GAME[3]=function(){ return {
     s.dist+=s.speed*dt;
     for(var i=0;i<s.obs.length;i++){var o=s.obs[i];
       if(!o.hit&&Math.abs(o.d-s.dist)<3&&Math.abs(0.5+o.lane*0.22-s.px)<0.16){ o.hit=true;
-        dlg({text:'撞上浮标了！爷爷说，看到障碍就绕开慢下来 🛟'});
+        dlg({text:'砰——浪板擦上浮标。小澈趴回板面喘气：“知道了，老船长，勇敢也得会拐弯。”放慢一点，从空隙穿过去 🛟'});
         if(loseHeart('浪太大，被卷回岸边了…再冲一次！'))return; }}
     for(var j=0;j<s.stars.length;j++){var st=s.stars[j];
       if(!st.got&&Math.abs(st.d-s.dist)<3&&Math.abs(0.5+st.lane*0.22-s.px)<0.16){ st.got=true;addStar(); }}
@@ -388,13 +388,13 @@ var tapUsed=false;
 
 var DAYS={
   1:{tag:'DAY 1 · 桨板',title:'白海豚的海湾',pic:null,
-     story:'清晨，你划着爷爷的旧桨板出海。爷爷的字条说，白海豚群只在最平静的海湾出现。',
+     story:'清晨，小澈划着爷爷的旧桨板去静水湾。爷爷说白海豚爱听口哨，却总吹跑调；每次被笑，他就把草帽扣到小澈脸上。',
      how:'🖐 点按屏幕左/右两侧保持平衡 · 捡满 6 颗海星唤来海豚 🐬'},
   2:{tag:'DAY 2 · 钓鱼',title:'黄昏的金鱼',pic:null,
-     story:'黄昏，你坐上小船，学着爷爷的样子抛竿。字条说：会有一尾发光的金鱼，记得替他看看。',
+     story:'黄昏，小澈坐上旧木船，越看清单越别扭：“这破字……不会真是我写的吧？”可他不服输，还是学爷爷把线甩进晚霞。',
      how:'🎣 等「！」亮起时点击屏幕刺鱼 · 钓上 3 尾金鱼'},
   3:{tag:'DAY 3 · 冲浪',title:'穿越大浪',pic:'fish',
-     story:'台风前的最后一浪。字条说：「穿过这道浪，把我的信交给大海。」',
+     story:'台风外沿将海推成一道高墙。清单翘起的一角，露出蜡笔画：一高一矮两个人，共踩一块浪板。小澈握紧信：“原来你瞒了我这么久。”',
      how:'🏄 按住屏幕＝压低加速 · 松开＝减速 · 冲过 100 米 · 小心浮标 🛟'}
 };
 
@@ -414,17 +414,22 @@ $('btnBriefGo').addEventListener('click',function(){
 
 function finishWin(){
   running=false;dlg(null);hud(false);
-  var extra=memories.length?'':'';
   if(day===1)memories.push('白海豚跃出海面的瞬间');
   if(day===2)memories.push('黄昏那尾发光的金鱼');
   if(day===3)memories.push('穿过大浪时的心跳');
-  if(day===3){ startEnding(); return; }
+  if(day===3){
+    $('winText').innerHTML='<b style="color:#ffd166">穿越大浪 ✅</b><br>'+
+      '浪从头顶合拢，又在身后轰然碎开。小澈穿过去了。浪板底面浮出一道旧刻痕：<br>“小澈，六岁，刚到爷爷的腰。”<br><br>'+
+      '他想起爷爷蹲在院里给板上蜡，满手白霜还嘴硬：“等你敢自己过浪，我才不陪。省得你嫌我管得多。”';
+    show('ovWin');return;
+  }
   $('winText').innerHTML='<b style="color:#ffd166">'+DAYS[day].title+' ✅</b><br>'+
-    (day===1?'海豚在桨板旁转了三圈，好像认识你。<br>你把一枚海星放进玻璃瓶——那是今天的记忆。':
-             '最后一尾金鱼入桶，晚霞烧红了海面。<br>明天，就是大浪了。爷爷的字条微微发烫。');
+    (day===1?'跑调的口哨刚响，白海豚便绕桨板三圈。小澈想起六岁那年，爷爷把他扛在肩上：“别怕，海会把走丢的东西送回来。”<br><br>他把一枚海星放进瓶里。盐渍淡了一点，背面露出半个歪歪扭扭的“澈”。':
+             '第三尾鱼跃出水面，鳞片盛满夕阳。小澈想起爷爷从不留小鱼：“借来看看就好，海里的好东西不能全搬回家。”<br><br>他把三尾金鱼放回海中。湿润的清单显出一行小字：“等我长到桨那么高……”那分明是他小时候的笔迹。');
   show('ovWin');
 }
 $('btnWinNext').addEventListener('click',function(){
+  if(day===3){ startEnding(); return; }
   day++;startDay();
 });
 
@@ -438,11 +443,14 @@ $('btnSkip').addEventListener('click',function(){
 function startEnding(){
   hud(false);
   $('endPic').src=ASSET.ending.indexOf('__')===0?'':ASSET.ending;
-  $('endText').innerHTML='<b style="color:#ffd166">尾声 · 交给大海的信</b><br><br>'+
-    '你躺在桨板上，随浪漂流。<br>'+
-    '把三个夏天的记忆装进玻璃瓶：「'+memories.join('」「')+'」。<br><br>'+
-    '——爷爷，你的心愿，我都替你完成了。<br>这封信，替我漂远一点。<br><br>'+
-    '<span style="opacity:.75;font-size:13px">🌊 全部记忆收集：'+memories.length+' / 3 · 谢谢你玩完这个故事</span>';
+  $('endText').innerHTML='<b style="color:#ffd166">尾声 · 第四个愿望</b><br><br>'+
+    '风静下来，小澈躺在桨板上随浪漂流。他拆开那封要“交给海”的信，第一行却写着：<br>“大海先生，麻烦把下面的话念给小澈听。”<br><br>'+
+    '“这不是我的心愿清单。是你六岁那年塞进汽水瓶，说长大后要和我一起做的三件事。后来你搬走，也把它忘了。”<br><br>'+
+    '“你问海会不会弄丢约定。我说不会，转身却把瓶子捞了回来，晒了三天。谁叫爷爷不太信浪，只信你。”<br><br>'+
+    '盐渍彻底化开，第四行是爷爷的字：<span style="color:#ffd166">“等小澈长大，仍愿意回海边，把不开心也讲给爷爷听。”</span><br><br>'+
+    '岸上传来跑调的口哨。爷爷戴着歪草帽，举起蓝搪瓷杯：“三天才回来？看来鱼没少笑你。”<br><br>'+
+    '小澈鼻尖发酸，偏过脸划向岸边：“少装神秘。第四个愿望，我现在就完成。”海浪追在身后，把祖孙俩的笑声一遍遍送回沙滩。<br><br>'+
+    '<span style="opacity:.75;font-size:13px">🌊 收集的记忆：「'+memories.join('」「')+'」</span>';
   show('ovEnd');
 }
 $('btnReplay').addEventListener('click',function(){ day=1;memories=[];startDay(); });
@@ -450,10 +458,10 @@ $('btnReplay').addEventListener('click',function(){ day=1;memories=[];startDay()
 /* 序章 */
 var proStep=0;
 var PRO=[
-  '暑假第一天，你回到爷爷的海边小屋。屋子里空空的，只有墙上挂着一块旧桨板。',
-  '退潮后的沙滩上，浪花送来一只玻璃瓶——里面是爷爷年轻时的字条，和一张<b>「心愿清单」</b>：',
-  '<span style="color:#ffd166">① 替我去看一次白海豚　② 钓起黄昏的金鱼　③ 穿过台风前的大浪，把这封信交给大海</span>',
-  '这个夏天，替爷爷完成这三个心愿吧。—— 点「继续」，第一天从桨板开始 🏄'
+  '暑假第一天，小澈独自回到海边小屋。爷爷只发来一句：“晚三天到，别把屋顶掀了。”屋里只剩旧桨板晃着影子。',
+  '“谁稀罕等他。”小澈踢着沙走到退潮线。一只系着绿色绳结的玻璃瓶滚到脚边——那是爷爷打渔四十年才会系的结。',
+  '瓶里有张清单：①看白海豚　②钓起黄昏的金鱼　③穿过大浪，把信交给海。旁边写着：“胆小鬼澈，敢不敢替我跑一趟？”',
+  '“激将法对我没用……除非只用三天。”小澈翻过清单，背面还有一行被盐渍盖住。更奇怪的是，前三行的圆字，他越看越眼熟。'
 ];
 $('btnStart').addEventListener('click',function(){
   $('coverPic').src=ASSET.cover.indexOf('__')===0?'':ASSET.cover;

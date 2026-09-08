@@ -55,7 +55,7 @@
 <div class="ov" id="ovCover">
   <img class="pic" id="coverPic" alt="">
   <h1>浪的约定</h1>
-  <p class="sub">一个关于海、魔术师与三个任务的狗狗夏日物语<br>桨板 · 钓鱼 · 冲浪 · 漂流</p>
+  <p class="sub">一个关于海、误会与绕路的狗狗夏日物语<br>桨板 · 钓鱼 · 冲浪 · 漂流</p>
   <button class="btn" id="btnStart">🌊 开始旅程</button>
   <button class="btn ghost" id="btnStory" style="margin-top:10px;">📖 剧情模式 · 只看故事</button>
 </div>
@@ -241,15 +241,15 @@ GAME[1]=function(){ return {
   init:function(s){ s.px=0.5;s.stars=[];s.star=0;s.dolphins=0;s.dolT=6;s.done=false;s.tilt=0;s.tiltV=0;
     for(var i=0;i<6;i++)s.stars.push({x:0.12+Math.random()*0.76,y:0.34+Math.random()*0.5,got:false});
     starGoal=s.starGoal;starCount=0;state.goalLabel=null;
-    dlg({text:'小金毛的字条：“膝盖放松，像踩在果冻上。左右点按保持平衡，顺手捡起漂来的贝壳。站稳了，别让海浪笑我教得差。”'});},
+    dlg({text:'小金毛的字条：“膝盖放松，像踩在果冻上。左右点按保持平衡，顺手捡起漂来的贝壳。别管我，先看前面。”'});},
   update:function(dt,t,s){
     var wavePush=Math.sin(t*0.0011)*0.5+Math.sin(t*0.0007+2)*0.3;
     s.tiltV+=wavePush*0.055*dt;
     if(touchSide)s.tiltV-=touchSide*0.16*dt;
     s.tiltV*=Math.pow(0.9,dt*60);s.tilt+=s.tiltV*dt;
     if(Math.abs(s.tilt)>0.55){ s.tilt=0;s.tiltV=0;
-      dlg({text:'哗啦！你一头栽进水里，贝壳在身边打转。岸边没有小金毛，只有一声很远的“噗嗤”。再稳一点，别被浪骗啦。'});
-      if(loseHeart('桨板歪成小月亮，你扑通坐下：“小金毛，你最好真的在忙正事。”抓住节奏，身体跟着水面一起摇。'))return;
+      dlg({text:'哗啦！你连人带桨掉进水里。你抹开眼前的咸水：“我连桨板都玩不好，还偏要他陪我出海。”'});
+      if(loseHeart('桨板又翻了。你攥住板沿，赌气不看他：“别等我。我这么慢，只会把两个人都拖在这儿。”'))return;
     }
     s.px+=touchSide*0.11*dt; s.px=Math.max(0.08,Math.min(0.92,s.px));
     for(var i=0;i<s.stars.length;i++){var st=s.stars[i];
@@ -283,7 +283,7 @@ GAME[1]=function(){ return {
 GAME[2]=function(){ return {
   goalLabel:null,starGoal:3,phase:'idle',fishX:0.5,fishT:0,biteT:0,biteWin:0,fishY:0,
   init:function(s){ s.phase='idle';s.star=0;starGoal=3;starCount=0;state.goalLabel=null;
-    dlg({text:'小金毛的字条：“浮标亮出‘！’就收线。别和鱼硬讲道理，它们今天也在排练。钓到的惊喜记得轻轻放回去，魔术师要爱护观众。”'});},
+    dlg({text:'小金毛的字条：“浮标亮出‘！’就收线。钓到小的，轻轻放回去——海里的东西，不全是我们的。别看鱼篓，看浮标。”'});},
   update:function(dt,t,s){
     if(s.phase==='idle'){
       s.fishT-=dt;
@@ -295,11 +295,15 @@ GAME[2]=function(){ return {
     } else if(s.phase==='bite'){
       s.biteWin-=dt;
       if(s.biteWin<=0){ s.phase='idle';s.fishT=1+Math.random()*1.5;
-        dlg({text:'你收线太早，鱼尾巴一甩就跑。水面传来陌生的笑声，你鼓起脸：“笑什么笑！下一条我一定抓住。”'}); }
+        dlg({text:'“！”暗下，鱼影脱钩而去。你把线绕回指间：“有他看着，我也还是会搞砸。早知道不该逞强。”'}); }
     } else if(s.phase==='reel'){
       s.fishY+=0.5*dt;
       if(s.fishY>=1){ s.phase='idle';s.fishT=1.4+Math.random();addStar();s.star++;
-        dlg({text:'浮标猛地下沉！你拉上一只漂流瓶，瓶里不是鱼，是半张银色面具和一颗木瓜形的小彩球。 ('+s.star+'/3)'}); 
+        var catchLines=[
+          '第一尾银亮的成鱼翻进鱼篓。你下意识朝船尾看了一眼；小金毛正低头理线。至少，这回不是空钩。',
+          '第二尾鱼压弯鱼竿。你稳稳收线，心里那句“我不行”松了一点。小金毛没夸你，只在旁边点了点头。',
+          '第三尾鱼跃出晚霞，计数终于满了。你先确认它已经长大，才轻声说：“这次，我没有乱来。”'];
+        dlg({text:catchLines[Math.min(2,s.star-1)]}); 
         if(s.star>=3)finishWin(); }
     }
     if(tapPulse&&s.phase==='bite'){ s.phase='reel';s.fishY=0;dlg(null); }
@@ -335,7 +339,7 @@ GAME[3]=function(){ return {
     for(var i=0;i<7;i++)s.stars.push({d:8+i*12,lane:Math.random()<0.5?-1:1,got:false});   // 8..80m
     for(var j=0;j<6;j++)s.obs.push({d:14+j*15,lane:Math.random()<0.5?-1:1,hit:false});     // 14..89m
     starGoal=1;starCount=0;state.goalLabel='🏄 向前 100m';
-    dlg({text:'小金毛的字条：“浪不是墙，是会动的门。左右滑动转向、加速，看清空隙再冲。等你穿过最后一道浪，就会看见我藏的答案。”'});},
+    dlg({text:'浮标背面有他的字：“浪不是墙，是会动的门。左右滑动转向、加速，看清空隙再冲。别抢快，认清记号。”'});},
   update:function(dt,t,s){
     var steer=touchDown?touchX:null;
     if(steer!==null){ s.px+=(steer-s.px)*Math.min(1,3.2*dt); s.speed+=4.5*dt; }
@@ -344,8 +348,8 @@ GAME[3]=function(){ return {
     s.dist+=s.speed*dt;
     for(var i=0;i<s.obs.length;i++){var o=s.obs[i];
       if(!o.hit&&Math.abs(o.d-s.dist)<3&&Math.abs(0.5+o.lane*0.22-s.px)<0.16){ o.hit=true;
-        dlg({text:'砰！冲浪板撞上浮标。你趴在板上喘气：“小金毛，等你回来，我要收一笔‘失踪费’。”放慢速度，找浪的缝。'});
-        if(loseHeart('浪花盖住视线，你听见面具后传来的笑声。那声音太熟了，熟得让你又气又想笑。稳住板头，再追上浪峰。'))return; }}
+        dlg({text:'砰！板头撞上浮标，浪花兜头落下。你咬着牙：“胆小鬼连浪都欺负。绕这么远，还是会撞。”'});
+        if(loseHeart('又一次被浪推回原处。你趴在板上喘：“躲开礁石也不算勇敢。我只是在给他添一条更长的路。”'))return; }}
     for(var j=0;j<s.stars.length;j++){var st=s.stars[j];
       if(!st.got&&Math.abs(st.d-s.dist)<3&&Math.abs(0.5+st.lane*0.22-s.px)<0.16){ st.got=true;addStar(); }}
     if(s.dist>=100&&!s.done){ s.done=true;finishWin(); }
@@ -389,13 +393,13 @@ var tapUsed=false;
 
 var DAYS={
   1:{tag:'DAY 1 · 桨板',title:'静水湾的桨板',pic:null,
-     story:'你们约好一起去静水湾玩桨板。刚穿好救生衣，小金毛说去拿防晒，转眼就没了影，只剩海面上一朵可疑的泡泡。',
+     story:'你划上桨板，小金毛游在旁边。他今天慢得反常，总落后半个身位。你想：昨晚那句话，终于把他的劲也耗没了。',
      how:'🖐 点按屏幕左/右两侧保持平衡 · 捡满 6 个贝壳'},
-  2:{tag:'DAY 2 · 钓鱼',title:'晚霞下的鱼线',pic:null,
-     story:'小金毛还是没出现。你坐上小船，把鱼线甩进晚霞，心里嘀咕：“说好一起玩的，怎么总是偷偷溜走？”',
-     how:'🎣 等「！」亮起时点击屏幕收线 · 钓上 3 个惊喜'},
-  3:{tag:'DAY 3 · 冲浪',title:'穿过浪的门',pic:'fish',
-     story:'海风把浪推成高墙。你独自抱紧冲浪板，忽然听见礁石后传来熟悉的脚步，又只看见一截金色尾巴闪过。',
+  2:{tag:'DAY 2 · 钓鱼',title:'让出的钓位',pic:null,
+     story:'三次收线，成绩仍是三只空钩——前两尾幼鱼放回海里，不算；第三钩什么也没有。你不敢看他，觉得丢人。',
+     how:'🎣 等「！」亮起时点击屏幕收线 · 钓上 3 尾鱼'},
+  3:{tag:'DAY 3 · 冲浪',title:'探好的远路',pic:'fish',
+     story:'直线最近，你却绕开每一片礁区，把路线拉成弯月。你怕他觉得你胆小，更怕自己真的只是胆小。',
      how:'🏄 按住屏幕＝压低加速 · 松开＝减速 · 冲过 100 米 · 小心浮标 🛟'}
 };
 
@@ -420,18 +424,22 @@ $('btnBriefGo').addEventListener('click',function(){
 
 function finishWin(){
   running=false;dlg(null);hud(false);
-  if(day===1)memories.push('桨板与贝壳');
-  if(day===2)memories.push('漂流瓶里的半张面具');
-  if(day===3)memories.push('穿过浪门时的心跳');
-  if(day===3){
-    $('winText').innerHTML='<b style="color:#ffd166">穿过浪的门 ✅</b><br>'+
-      '你冲过浪峰，礁石后露出一盏排练灯、几根彩带，还有奥古的羽毛笔。<br><br>'+
-      '原来小金毛一直在准备今晚的魔术！';
-    show('ovWin');return;
-  }
-  $('winText').innerHTML='<b style="color:#ffd166">'+DAYS[day].title+' ✅</b><br>'+
-    (day===1?'你捡到贝壳，发现岸边有一串白色面粉脚印，通向一间关着门的小屋。<br>门缝里飘出一句：“第一幕，准备完毕。”':
-             '卡片背面写着：“今晚的笑声，借奥古的舞台一用。”<br>你捏紧半张面具，担心地想：小金毛是不是遇到麻烦了？');
+  if(day===1)memories.push('挡浪的背影');
+  if(day===2)memories.push('让出的钓位');
+  if(day===3)memories.push('探好的远路');
+  var REPLAY={
+    1:{title:'静水湾的桨板 ✅',mine:'最后一枚贝壳落进网袋。小金毛仍慢吞吞游在旁边。你以为，他还在为昨晚那句话闹别扭。',
+       his:'侧浪正斜撞过来。他故意游到你侧前方，让浪先砸在自己肩背；落到你的板下，只剩轻轻一晃。'},
+    2:{title:'让出的钓位 ✅',mine:'你还记着那三只空钩，不敢看他。余光里，他嘴角动了一下。你以为下一秒，就会听见嘲笑。',
+       his:'前天他也钓空过，才摸清两处水势：他的钓位压着暗流，鱼群全在你这边。他把好位置让给你，嘴角动，是在替你数到三。'},
+    3:{title:'探好的远路 ✅',mine:'你沿浮标绕出一个大弧，才越过最后一道浪。别人走直线，你走远路；你以为，自己只是怂。',
+       his:'你正逐个穿过带爪痕的浮标。他想起昨天独自绕完全程：直线下藏着礁石；你的“远路”，是他探好并做了记号的安全路。'}
+  }[day];
+  $('winText').innerHTML='<b style="color:#ffd166">'+REPLAY.title+'</b><br><br>'+
+    '<div style="text-align:left;opacity:.72;font-size:13.5px;color:#9fb8cc">你刚才以为的——</div>'+
+    '<div style="text-align:left">'+REPLAY.mine+'</div><br>'+
+    '<div style="text-align:left;color:#ffd166;font-size:13.5px">🔄 那一秒，从小金毛的眼睛看——</div>'+
+    '<div style="text-align:left">'+REPLAY.his+'</div>';
   show('ovWin');
 }
 $('btnWinNext').addEventListener('click',function(){
@@ -446,30 +454,46 @@ $('btnSkip').addEventListener('click',function(){
   hearts=3;hideAll();hud(false);finishWin();
 });
 
+var ENDINGS=[
+  '夕阳把海铺成铜红。你们趴在各自的板上随潮漂流，两条航迹一会儿贴近，一会儿分开，像谁都想开口，又各自拐弯。',
+  '一只裹着旧蓝线的漂流瓶卡在两块板之间。小金毛伸爪，你也同时按住瓶身——这是你们早年埋下、说好以后再挖的时间胶囊。',
+  '瓶塞一开，先滚出一枚干瘪的菠萝蜜籽。纸条上两只歪狗并排站着，一只画得快，一只画得慢；下面是你小时候的字。',
+  '你翻过纸条。背面是当年轮流写的约定：“谁绕路，谁要讲为什么；谁没跟上，另一个不许替他道歉。”盐水晕开两个爪印。',
+  '小金毛先开口：“我没生气。我怕那些慢、让位、绕路，让你更累。”你攥着湿纸条：“我也怕自己总要你照顾，才说了那句气话。”',
+  '他把板划近一点：“那以后，绕路就说。”你点头：“我也说。”两道航迹慢慢并成一条。<span style="color:#ffd166">同行不是同速，是愿意解释自己的绕路。</span>',
+  '<span style="color:#ffd166">真正的礼物藏在【彩蛋位置】。</span><br>去那里找漂流瓶，再输入瓶中暗号。'
+];
+var endStep=0;
 function startEnding(){
-  hud(false);
+  hud(false);endStep=0;
   $('endPic').src=ASSET.ending.indexOf('__')===0?'':ASSET.ending;
-  $('endText').innerHTML='<b style="color:#ffd166">尾声 · 最后的魔术</b><br><br>'+
-    '你躺在漂流板上顺流而下。天一暗，岸边灯串一盏盏亮起，陌生笑声变成欢呼：“魔术师，开场！”<br><br>'+
-    '光明青野间的鸡从草地里跑来，头顶小礼帽，排成歪歪扭扭的一列。奥古站在幕边，朝你眨了眨眼。<br><br>'+
-    '戴银色面具的魔术师跳上小台，斗篷下露出一小撮金毛。他朝你鞠躬：“今晚的贵宾，请坐第一排。”<br><br>'+
-    '他挥动羽毛笔，杨桃、蒲桃、莲雾、木瓜和菠萝蜜从帽子里接连飞出，落成一座甜甜的果园。<br><br>'+
-    '小鸡们啄响彩铃，果园变成旋转舞台。你忍不住笑：“这群地里跑的鸡，排练得比你整齐。”面具后传来得意的哼声。<br><br>'+
-    '魔术师把那只漂流瓶递给你：“这是我们的寻宝瓶。沿途收集的每个线索，都是我想送你的记忆。”<br><br>'+
-    '灯光聚成一束，魔术师摘下面具。小金毛扑进你怀里，尾巴摇成风车：“最后一个魔术，是把小金毛自己变回来！”<br><br>'+
-    '<span style="color:#ffd166">真正的礼物藏在【彩蛋位置】。</span><br>去那里找漂流瓶，再输入瓶中暗号。<br><br>'+
-    '<span style="opacity:.75;font-size:13px">🌊 收集的记忆：火车风景 ✓ 桨板贝壳 ✓ 面具线索 ✓ 水果魔法 ✓ 鸡群欢呼 ✓</span>';
+  $('endText').innerHTML=ENDINGS[0]+'<br><span class="next" style="float:right;font-size:12px;opacity:.6">点击继续 ▸</span>';
+  $('btnReplay').style.display='none';
   show('ovEnd');
+  $('ovEnd').onclick=function(e){
+    if(e.target.closest('button'))return;
+    endStep++;
+    if(endStep<ENDINGS.length){
+      $('endPic').style.display=endStep>=5?'none':'block';
+      $('endText').innerHTML=ENDINGS[endStep]+
+        '<br><span style="float:right;font-size:12px;opacity:.6">'+(endStep<ENDINGS.length-1?'点击继续 ▸':'')+'</span>';
+    } else {
+      $('ovEnd').onclick=null;
+      $('endText').innerHTML='🔵 ✓ 气话与沉默<br>🔵 ✓ 挡浪的背影<br>🔵 ✓ 让出的钓位<br>🔵 ✓ 探好的远路<br>🔵 ✓ 并成的航迹'+
+        '<br><br><span style="opacity:.75;font-size:13px">🌊 《我们不必同速》· 完</span>';
+      $('btnReplay').style.display='inline-block';
+    }
+  };
 }
 $('btnReplay').addEventListener('click',function(){ day=1;memories=[];startDay(); });
 
 /* 序章 */
 var proStep=0;
 var PRO=[
-  '火车摇摇晃晃驶向海边小镇。你和小金毛挤在窗边，他抱着两只水壶，神秘兮兮地说：“这趟旅行，保证有惊喜。”',
-  '你靠着车窗睡着了。梦里海风把小金毛吹得好远，你追过月光、礁石和浪花，怎么喊，他都只留下一串笑声。',
-  '你猛地醒来，小金毛却不在座位上。正要生气，窗外忽然掠过荔枝苑果园：杨桃、蒲桃和莲雾在阳光里闪闪发亮。',
-  '座位上留着字条：“我去准备一件大事！先完成三个任务：桨板、钓鱼、冲浪。完成后，跟着笑声走。——最帅的魔术师学徒”'
+  '昨夜收拾装备时，你嫌他第三次重系缆绳，脱口而出：“跟你出海真累。”他没回嘴，只把绳结拉紧，又检查了一遍。',
+  '天刚亮，你把杨桃、蒲桃塞进帆布袋；他默默添了莲雾和木瓜干。光明青野间营地那群地里跑的鸡追到码头，谁也没说早安。',
+  '静水湾看着温顺，水下却有斜推的侧浪。你抱起桨板；小金毛扣好救生衣。先过这片海，再说那句没说出口的话。',
+  '桨板上压着字条：“去静水湾，别回头等我。我会跟上。”末尾画了个歪箭头，指向水面——这是他要你先出发的暗号。'
 ];
 $('btnStart').addEventListener('click',function(){
   storyMode=false;

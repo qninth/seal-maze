@@ -81,6 +81,18 @@
   <div id="chatNext">▼ 继续</div>
 </div>
 
+<!-- 选关 -->
+<div class="ov hidden" id="ovSelect">
+  <h1 style="font-size:24px;">🎮 纯游戏模式</h1>
+  <p class="sub" style="margin-bottom:14px;">直接试玩任意关卡 · 无剧情 · 3 颗心</p>
+  <div id="selBtns" style="display:flex;flex-direction:column;gap:12px;width:min(80vw,320px);">
+    <button class="btn" id="selD1">🏄 DAY 1 · 借浪巡湾</button>
+    <button class="btn" id="selD2">🎣 DAY 2 · 落线数鱼</button>
+    <button class="btn" id="selD3">🌊 DAY 3 · 踩浪传令</button>
+  </div>
+  <button class="btn ghost" id="btnSelBack" style="margin-top:16px;">← 返回</button>
+</div>
+
 <!-- 封面 -->
 <div class="ov" id="ovCover">
   <img class="pic" id="coverPic" alt="">
@@ -88,6 +100,7 @@
   <p class="sub">一个关于海、误会与绕路的狗狗夏日物语<br>桨板 · 钓鱼 · 冲浪 · 漂流</p>
   <button class="btn" id="btnStart">🌊 开始旅程</button>
   <button class="btn ghost" id="btnStory" style="margin-top:10px;">📖 剧情模式 · 只看故事</button>
+  <button class="btn ghost" id="btnArcade" style="margin-top:10px;">🎮 纯游戏模式 · 选关试玩</button>
 </div>
 
 <!-- 失败 -->
@@ -134,7 +147,7 @@ var day=0,hearts=3,starCount=0,starGoal=0;
 var running=false,paused=false,raf=0,lastT=0;
 var memories=[],state={};
 
-function show(id){ ['ovCover','ovChat','ovFail','ovEnd'].forEach(function(o){
+function show(id){ ['ovCover','ovChat','ovFail','ovEnd','ovSelect'].forEach(function(o){
   $(o).classList.toggle('hidden',o!==id); }); }
 function hideAll(){ show('__none__'); }
 function hud(on,label,goalText2){
@@ -244,6 +257,54 @@ function dlg(say){
   box.appendChild(msgEl(m));
   d.style.display='block';
 }
+
+/* ================= Juice 引擎（三档反馈协议） ================= */
+var FX={hitstop:0,shake:0,shakeT:0,particles:[],floats:[],flash:0,flashX:0,flashY:0};
+function fxHitstop(ms){ FX.hitstop=Math.max(FX.hitstop,ms/1000); }
+function fxShake(px,ms){ FX.shake=Math.max(FX.shake,px); FX.shakeT=ms/1000; }
+function fxFlash(x,y){ FX.flash=0.09; FX.flashX=x; FX.flashY=y; }
+function fxParticle(x,y,opts){ opts=opts||{};
+  FX.particles.push({x:x,y:y,vx:opts.vx||0,vy:opts.vy||-60,life:opts.life||0.3,t:0,
+    size:opts.size||3,color:opts.color||'#fff',grav:opts.grav!==undefined?opts.grav:120}); }
+function fxBurst(x,y,n,opts){ opts=opts||{};
+  for(var i=0;i<n;i++){ var a=Math.random()*Math.PI*2,sp=(opts.speed||80)*(0.4+Math.random()*0.6);
+    fxParticle(x,y,{vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-40,life:0.25+Math.random()*0.2,
+      size:2+Math.random()*2,color:opts.color||'#fff',grav:opts.grav!==undefined?opts.grav:60}); } }
+function fxFloat(x,y,text,color){ FX.floats.push({x:x,y:y,text:text,color:color||'#ffd166',t:0,life:0.8}); }
+function fxUpdate(dt){
+  if(FX.hitstop>0){ FX.hitstop-=dt; return false; }
+  if(FX.shakeT>0){ FX.shakeT-=dt; if(FX.shakeT<=0)FX.shake=0; }
+  FX.flash=Math.max(0,FX.flash-dt);
+  for(var i=FX.particles.length-1;i>=0;i--){ var p=FX.particles[i];
+    p.t+=dt; if(p.t>=p.life){ FX.particles.splice(i,1); continue; }
+    p.vy+=p.grav*dt; p.x+=p.vx*dt; p.y+=p.vy*dt; }
+  for(var j=FX.floats.length-1;j>=0;j--){ var f=FX.floats[j];
+    f.t+=dt; f.y-=40*dt; if(f.t>=f.life)FX.floats.splice(j,1); }
+  return true;
+}
+function fxDraw(){
+  X.save();
+  if(FX.shake>0){ X.translate((Math.random()-0.5)*2*FX.shake,(Math.random()-0.5)*2*FX.shake); }
+  for(var i=0;i<FX.particles.length;i++){ var p=FX.particles[i];
+    X.globalAlpha=1-p.t/p.life; X.fillStyle=p.color;
+    X.fillRect(p.x-p.size/2,p.y-p.size/2,p.size,p.size); }
+  X.globalAlpha=1;
+  for(var j=0;j<FX.floats.length;j++){ var f=FX.floats[j];
+    var a=f.t<f.life*0.7?1:1-(f.t-f.life*0.7)/(f.life*0.3);
+    var sc=f.t<0.12?1.25-(f.t/0.12)*0.25:1;
+    X.save(); X.translate(f.x,f.y); X.scale(sc,sc); X.globalAlpha=a;
+    X.fillStyle=f.color; X.font='bold 16px sans-serif'; X.textAlign='center';
+    X.fillText(f.text,0,0); X.restore(); }
+  if(FX.flash>0){ X.globalAlpha=FX.flash/0.09*0.7; X.fillStyle='#fff';
+    X.beginPath(); X.arc(FX.flashX,FX.flashY,26,0,7); X.fill(); X.globalAlpha=1; }
+  X.restore();
+}
+/* 三档反馈 */
+function fxLight(x,y,color){ fxFlash(x,y); fxBurst(x,y,3,{color:color||'#fff',speed:50}); }
+function fxMedium(x,y,text,color){ fxHitstop(40); fxFlash(x,y);
+  fxBurst(x,y,8,{color:color||'#ffd166',speed:90}); fxShake(3,90); fxFloat(x,y-24,text,color); }
+function fxHeavy(x,y,text,color){ fxHitstop(90); fxFlash(x,y);
+  fxBurst(x,y,18,{color:color||'#ffd166',speed:140}); fxShake(6,160); fxFloat(x,y-28,text,color); }
 
 /* ================= 海面/角色绘制 ================= */
 function drawSea(t){
@@ -436,7 +497,8 @@ GAME[2]=function(){return{
         s.phase='reel';s.tension=0.4;s.tenDir=1;s.tenT=2.2;s.tenMove=0;
         dlg(null);tapPulse=0;return;
       }
-      if(s.biteWin<=0){ /* 脱钩 */
+      if(s.biteWin<=0){ /* 脱钩：重置到抛竿阶段，防止状态机卡死 */
+        s.phase='cast';s.castPow=0;s.prog=0;
         failSeq(DAYS[2].fails[s.mi++%2],'又是空钩…别急，看准「！」。');tapPulse=0;return;
       }
     }
@@ -465,8 +527,9 @@ GAME[2]=function(){return{
       if(s.tension<0.05||s.tension>0.95){
         s.breakT=(s.breakT||0)+dt;
         if(s.breakT>0.9){ s.breakT=0;
+          s.phase='cast';s.castPow=0;s.prog=0;
           failSeq([{w:'n',t:'（线绷断了。鱼落回浅石上。）'},{w:'j',t:'先救鱼，月底再救半枚工资。'}],'断线了…按住收、松开放，盯着张力条。');
-          s.phase='cast';s.castPow=0;return; }
+          return; }
       } else s.breakT=0;
     }
     tapPulse=0;},
@@ -578,6 +641,7 @@ GAME[3]=function(){return{
     /* 危险判定：|pocket|>0.92 持续 0.75s */
     if(Math.abs(s.pocket)>0.92){ s.pocketT=(s.pocketT||0)+dt;
       if(s.pocketT>1.1){ s.pocketT=0;s.pocket=0;s.speed=s.baseSpeed;
+        fxHeavy(s.px*W,H*0.86,'出局！','#ff8a5c');
         failSeq(DAYS[3].fails[s.fi++%2],'被浪甩出去了…下坡按住，谷底松手。');return; } }
     else s.pocketT=0;
     /* 横移：按住时拖动选道 */
@@ -831,7 +895,7 @@ var ENDINGS=[
 ];
 
 /* ================= 流程控制 ================= */
-var cur=null,storyMode=false;
+var cur=null,storyMode=false,arcade=false;
 
 function startDay(){
   hearts=3;starCount=0;cur=GAME[day]();state=cur;
@@ -845,6 +909,8 @@ function startDay(){
 }
 function finishWin(){
   running=false;dlg(null);hud(false);
+  if(arcade){ $('failText').innerHTML='✅ 过关！<br><br>'+DAYS[day].title+' 完成'; show('ovFail');
+    $('btnRetry').textContent='再玩一次'; return; }
   memories.push(DAYS[day].memory);
   var after=day===3?function(){startEnding();}:function(){day++;startDay();};
   showChat(DAYS[day].win,{goLabel:day===3?'尾声 ▸':'继续 ▸',onDone:after});
@@ -858,11 +924,20 @@ function startEnding(){
 }
 $('btnRetry').addEventListener('click',function(){
   hearts=3;hideAll();paused=false;
+  $('btnRetry').textContent='再试一次';
+  if(arcade&&running===false){
+    showChat([{w:'n',t:'（再来一局）'}],{goLabel:'开始 ▸',onDone:function(){
+      hideAll();cur.init(state);running=true;paused=false;lastT=performance.now();
+    }});
+    return;
+  }
   hud(true,DAYS[day].tag,DAYS[day].how);
   cur.init(state);running=true;lastT=performance.now();
 });
 $('btnSkip').addEventListener('click',function(){
-  hearts=3;hideAll();paused=false;finishWin();
+  hearts=3;hideAll();paused=false;
+  if(arcade){ show('ovSelect'); $('btnRetry').textContent='再试一次'; return; }
+  finishWin();
 });
 $('btnReplay').addEventListener('click',function(){
   day=1;memories=[];storyMode=false;startDay();
@@ -873,19 +948,34 @@ function beginPrologue(){
   $('coverPic').src=ASSET.cover.indexOf('__')===0?'':ASSET.cover;
   showChat(PRO,{onDone:function(){day=1;startDay();}});
 }
-$('btnStart').addEventListener('click',function(){ storyMode=false;beginPrologue(); });
-$('btnStory').addEventListener('click',function(){ storyMode=true;beginPrologue(); });
+$('btnStart').addEventListener('click',function(){ storyMode=false;arcade=false;beginPrologue(); });
+$('btnStory').addEventListener('click',function(){ storyMode=true;arcade=false;beginPrologue(); });
+$('btnArcade').addEventListener('click',function(){ show('ovSelect'); });
+$('btnSelBack').addEventListener('click',function(){ show('ovCover'); });
+[[1,'selD1'],[2,'selD2'],[3,'selD3']].forEach(function(p){
+  $(''+p[1]).addEventListener('click',function(){
+    arcade=true;storyMode=false;day=p[0];
+    hearts=3;starCount=0;cur=GAME[day]();state=cur;
+    hideAll();hud(true,DAYS[day].tag,DAYS[day].how);
+    showChat([{w:'n',t:'（纯游戏模式 · '+DAYS[day].title+'）'}],{goLabel:'开始 ▸',onDone:function(){
+      hideAll();cur.init(state);running=true;paused=false;lastT=performance.now();
+      cancelAnimationFrame(raf);raf=requestAnimationFrame(loop);
+    }});
+  });
+});
 
 /* ================= 主循环 ================= */
 function loop(now){
   if(!running)return;
   var dt=Math.min(0.05,(now-lastT)/1000);lastT=now;
   var t=now;
+  var live=fxUpdate(dt);
   if(cur){
     var frozen=paused||$('dlg').style.display==='block';
     if(frozen){ cur.draw(t,state); }
-    else { cur.update(dt,t,state); if(running&&!paused)cur.draw(t,state); }
+    else { if(live)cur.update(dt,t,state); if(running)cur.draw(t,state); }
   }
+  fxDraw();
   if(running)raf=requestAnimationFrame(loop);
 }
 

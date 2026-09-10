@@ -96,7 +96,18 @@
       <span style="width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,.3);display:flex;align-items:center;justify-content:center;font-size:20px;">🎯</span>
       <span>DAY 3 · 夜市弹珠摊</span></button>
   </div>
-  <button class="btn ghost" id="btnSelBack" style="margin-top:16px;">← 返回</button>
+  <button class="btn" id="btnEndless" style="display:none;margin-top:12px;background:linear-gradient(135deg,#ff9a5c,#ff6b9d);color:#fff;">♾️ 无尽模式 · 刷分</button>
+  <div id="myBest" style="margin-top:10px;font-size:13px;opacity:.8;"></div>
+  <button class="btn ghost" id="btnBoard" style="margin-top:10px;">🏆 排行榜</button>
+  <button class="btn ghost" id="btnSelBack" style="margin-top:10px;">← 返回</button>
+</div>
+
+<!-- 排行榜 -->
+<div class="ov hidden" id="ovBoard">
+  <h1 style="font-size:24px;">🏆 总分排行榜</h1>
+  <p class="sub" style="margin-bottom:10px;">每一关的得分都会累计 · 本地保存前 8 名</p>
+  <div id="boardList" style="width:min(80vw,320px);margin-bottom:14px;"></div>
+  <button class="btn ghost" id="btnBoardBack">← 返回</button>
 </div>
 
 <!-- 封面 -->
@@ -155,7 +166,7 @@ var day=0,hearts=3,starCount=0,starGoal=0;
 var running=false,paused=false,raf=0,lastT=0;
 var memories=[],state={};
 
-function show(id){ ['ovCover','ovChat','ovFail','ovEnd','ovSelect'].forEach(function(o){
+function show(id){ ['ovCover','ovChat','ovFail','ovEnd','ovSelect','ovBoard'].forEach(function(o){
   $(o).classList.toggle('hidden',o!==id); }); }
 function hideAll(){ show('__none__'); }
 function hud(on,label,goalText2){
@@ -451,7 +462,7 @@ GAME[1]=function(){return{
             a.dead=true;b.dead=true;
             var nt=a.type+1, T=SUIKA_TYPES[nt];
             s.items.push({type:nt,x:(a.x+b.x)/2,y:(a.y+b.y)/2,r:T.r,vx:0,vy:-60,dead:false});
-            var pts=T.score;s.score+=pts;addStar(0);
+            var pts=T.score;s.score+=pts;addStar(0);totalScore+=pts;
             hud(true,null,'🐟 '+s.score+' / 150 分');
             var mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
             if(nt>=5){ fxHeavy(mx,my,'合成 '+T.n+'！+'+pts,'#ffd166'); }
@@ -476,7 +487,11 @@ GAME[1]=function(){return{
       if(s.overT>1.2){ s.overT=0;
         hearts--;hud(true,null,'🐟 '+s.score+' / 150 分');
         if(hearts<=0){ running=false;hearts=3;
-          $('failText').textContent='当日失败…总分 '+s.score;
+          if(endless){ var b=loadBoard();b.push({score:totalScore,t:Date.now()});
+            b.sort(function(a,c){return c.score-a.score;});saveBoard(b);endless=false;
+            $('failText').innerHTML='♾️ 无尽结束！本轮总分 <b style="color:#ffd166;">'+totalScore+'</b>（已记入排行榜）';
+          } else $('failText').textContent='当日失败…总分 '+s.score+
+            (failCount>=2?'\n（小提示：大件放中间，同款别拆散）':'');
           show('ovFail');return; }
         var topY=Infinity,topArr=[];
         for(var m=0;m<s.items.length;m++){ if(s.items[m].y<topY)topY=s.items[m].y; }
@@ -493,8 +508,14 @@ GAME[1]=function(){return{
         return;
       }
     } else s.overT=0;
-    var maxType=0;
-    for(var q=0;q<s.items.length;q++)maxType=Math.max(maxType,s.items[q].type);
+    var maxType=0,typeCount={};
+    for(var q=0;q<s.items.length;q++){ maxType=Math.max(maxType,s.items[q].type);
+      typeCount[s.items[q].type]=(typeCount[s.items[q].type]||0)+1; }
+    /* near-miss 提示：离下一级合成只差 1 件时轻提示（每 6s 最多一次） */
+    var hintType=-1;
+    for(var lv=1;lv<=4;lv++){ if(typeCount[lv]===1&&typeCount[lv+1]){ hintType=lv+1;break; } }
+    if(hintType>0&&t-(s.lastHintT||0)>6){ s.lastHintT=t;
+      fxFloat(W/2,H*0.3,'再掉一颗'+SUIKA_TYPES[hintType-1].n+'就能合'+SUIKA_TYPES[hintType].n+'！','#7ec8e3'); }
     if(!s.done&&maxType>=5){ s.done=true;s.dolT=t;
       fxHeavy(W/2,H*0.4,'今日大丰收！','#ffd166'); }
     tapPulse=0;},
@@ -554,7 +575,7 @@ GAME[2]=function(){return{
       s.depth-=60*dt; s.o2-=2.5*dt;
       if(s.depth<=0){
         s.depth=0;
-        if(s.bag>0){ s.score+=s.bag;
+        if(s.bag>0){ s.score+=s.bag;totalScore+=s.bag;
           fxHeavy(W/2,H*0.3,'落袋为安 +'+s.bag,'#ffd166'); }
         s.trip++;s.bag=0;s.o2=100;s.mode='wait';s.creatures=[];
         if(s.trip>3){ s.done=true;s.dolT=t;return; }
@@ -596,7 +617,11 @@ GAME[2]=function(){return{
           fxHeavy(s.px*W,H/2,'被鳗咬！包-30%','#ff6b6b');
           hearts--;hud(true);
           if(hearts<=0){ running=false;hearts=3;
-            $('failText').textContent='深海危险…总分 '+s.score;show('ovFail');return; } }
+            if(endless){ var b4=loadBoard();b4.push({score:totalScore,t:Date.now()});
+              b4.sort(function(a,c){return c.score-a.score;});saveBoard(b4);endless=false;
+              $('failText').innerHTML='♾️ 无尽结束！本轮总分 <b style="color:#ffd166;">'+totalScore+'</b>（已记入排行榜）';
+            } else $('failText').textContent='深海危险…总分 '+s.score;
+            show('ovFail');return; } }
         else if(s.netCd<=0){
           s.bag+=c.v;s.netCd=1.3;c.dead=true;
           if(c.pearl){ s.pearl=true;s.score+=40;
@@ -620,7 +645,11 @@ GAME[2]=function(){return{
     if(s.o2<=0){
       hearts--;hud(true);
       if(hearts<=0){ running=false;hearts=3;
-        $('failText').textContent='氧气耗尽…总分 '+s.score;show('ovFail');return; }
+        if(endless){ var b2=loadBoard();b2.push({score:totalScore,t:Date.now()});
+          b2.sort(function(a,c){return c.score-a.score;});saveBoard(b2);endless=false;
+          $('failText').innerHTML='♾️ 无尽结束！本轮总分 <b style="color:#ffd166;">'+totalScore+'</b>（已记入排行榜）';
+        } else $('failText').textContent='氧气耗尽…总分 '+s.score;
+        show('ovFail');return; }
       fxHeavy(W/2,H/2,'救援绳拉你上来了！','#ffd166');
       s.score+=Math.floor(s.bag*0.7);s.bag=0;s.o2=100;s.depth=0;s.mode='dive';s.creatures=[];
     }
@@ -657,7 +686,11 @@ GAME[2]=function(){return{
     X.fillRect(ox,oy,ow*Math.max(0,s.o2)/100,10);
     if(s.o2<25){ X.fillStyle='#ff6b6b';X.font='12px sans-serif';
       X.globalAlpha=0.5+0.5*Math.sin(t*0.01);X.textAlign='center';
-      X.fillText('⚠ 氧气不足！松手上浮',W/2,oy+26);X.globalAlpha=1; }
+      var eta=Math.max(1,Math.floor(s.o2/6.5));
+      X.fillText('⚠ 氧气不足！约 '+eta+' 秒后耗尽 — 现在上浮还来得及',W/2,oy+26);
+      X.globalAlpha=1; }
+    else if(s.o2<50){ X.fillStyle='#ffd166';X.font='12px sans-serif';X.textAlign='center';
+      X.fillText('氧气过半，考虑回程了吧',W/2,oy+26); }
     X.fillStyle='rgba(255,255,255,.7)';X.font='16px sans-serif';
     X.fillText(Math.floor(s.depth)+'m',W/2,oy+46);
     X.fillStyle='#ffd166';X.font='13px sans-serif';
@@ -697,7 +730,7 @@ GAME[3]=function(){return{
     if(s.done&&t-s.dolT>1.2){ finishWin();return; }
     if(s.betweenT>0){ s.betweenT-=dt;
       if(s.betweenT<=0){
-        s.wave++;starCount=s.wave;
+        s.wave++;starCount=s.wave;totalScore+=s.wave*10;
         hud(true,null,'🎯 第 '+s.wave+' / 8 波');
         if(s.wave>8&&!s.done){ s.done=true;s.dolT=t;
           fxHeavy(W/2,H*0.4,'夜市之星！','#ffd166');return; }
@@ -764,14 +797,21 @@ GAME[3]=function(){return{
       for(var d2=0;d2<s.blocks.length;d2++){ s.blocks[d2].row++; }
       s.blocks=s.blocks.filter(function(b){return b.row<13;});
       this.layout(s);
-      var hitFloor=false;
-      for(var d3=0;d3<s.blocks.length;d3++){ if(s.blocks[d3].row>=10){ hitFloor=true;break; } }
+      var hitFloor=false,dangerRow=false;
+      for(var d3=0;d3<s.blocks.length;d3++){
+        if(s.blocks[d3].row>=10)hitFloor=true;
+        if(s.blocks[d3].row>=8)dangerRow=true; }
+      if(dangerRow&&!hitFloor&&s.wave<8){
+        fxFloat(W/2,lineY-30,'⚠ 快到沙滩了！优先打低处的方块','#ff9a5c'); }
       if(hitFloor){ hearts--;hud(true);
         for(var d4=0;d4<s.blocks.length;d4++){ s.blocks[d4].row=Math.max(0,s.blocks[d4].row-2); }
         this.layout(s);
         fxHeavy(W/2,lineY||H*0.7,'海浪推回！','#7ec8e3');
         if(hearts<=0){ running=false;hearts=3;
-          $('failText').textContent='摊位被占了…撑到第 '+s.wave+' 波';
+          if(endless){ var b3=loadBoard();b3.push({score:totalScore,t:Date.now()});
+            b3.sort(function(a,c){return c.score-a.score;});saveBoard(b3);endless=false;
+            $('failText').innerHTML='♾️ 无尽结束！本轮总分 <b style="color:#ffd166;">'+totalScore+'</b>（已记入排行榜）';
+          } else $('failText').textContent='摊位被占了…撑到第 '+s.wave+' 波';
           show('ovFail');return; } }
       s.betweenT=0.8;
     }},
@@ -904,6 +944,24 @@ var ENDINGS=[
 
 /* ================= 流程控制 ================= */
 var cur=null,storyMode=false,arcade=false;
+/* ============ 总分 & 排行榜 & 无尽模式 ============ */
+var totalScore=0,endless=false,failCount=0;
+function loadBoard(){ try{ return JSON.parse(localStorage.getItem('wave_board')||'[]'); }catch(e){ return []; } }
+function saveBoard(b){ try{ localStorage.setItem('wave_board',JSON.stringify(b.slice(0,8))); }catch(e){} }
+function fmtDate(ts){ var d=new Date(ts);
+  return (d.getMonth()+1)+'/'+d.getDate()+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
+function renderBoard(){
+  var b=loadBoard(),box=$('boardList');
+  if(!b.length){ box.innerHTML='<div style="opacity:.6;padding:8px;">还没有记录，快去创造第一个！</div>'; return; }
+  var medal=['🥇','🥈','🥉'];
+  box.innerHTML=b.map(function(r,i){
+    return '<div style="display:flex;justify-content:space-between;padding:8px 14px;border-radius:10px;'+
+      'background:'+(i<3?'rgba(255,209,102,.18)':'rgba(255,255,255,.08)')+';margin-bottom:6px;">'+
+      '<span>'+(medal[i]||('No.'+(i+1)))+'</span>'+
+      '<span style="flex:1;margin-left:10px;color:rgba(255,255,255,.7);font-size:12px;align-self:center;">'+fmtDate(r.t)+'</span>'+
+      '<b style="color:#ffd166;">'+r.score+'</b></div>';
+  }).join('');
+}
 
 function startDay(){
   running=false;hearts=3;starCount=0;cur=GAME[day]();state=cur;
@@ -917,8 +975,21 @@ function startDay(){
 }
 function finishWin(){
   running=false;dlg(null);hud(false);
-  if(arcade){ $('failText').innerHTML='✅ 过关！<br><br>'+DAYS[day].title+' 完成'; show('ovFail');
-    $('btnRetry').textContent='再玩一次'; return; }
+  localStorage.setItem('wave_endless','1');
+  if(arcade){
+    var entry={score:totalScore,t:Date.now()};
+    if(endless){
+      var b=loadBoard();b.push(entry);b.sort(function(a,c){return c.score-a.score;});saveBoard(b);
+      var rank=b.indexOf(entry)+1; if(rank<0)rank=0;
+      $('failText').innerHTML='♾️ 无尽结束！<br><br>本轮总分 <b style="color:#ffd166;font-size:26px;">'+totalScore+'</b><br>'+
+        (rank>0&&rank<=8?'🏆 排行榜第 '+rank+' 名！':'继续加油！')+'<br>最高分：'+((loadBoard()[0]||{}).score||totalScore);
+      endless=false;
+      $('btnRetry').textContent='再来一轮';
+    } else {
+      $('failText').innerHTML='✅ 过关！<br><br>'+DAYS[day].title+' 完成<br><span style="font-size:13px;opacity:.8;">累计总分 '+totalScore+'</span>';
+      $('btnRetry').textContent='再玩一次';
+    }
+    show('ovFail'); return; }
   memories.push(DAYS[day].memory);
   var after=day===3?function(){startEnding();}:function(){day++;startDay();};
   if(DAYS[day].win){ showChat(DAYS[day].win,{goLabel:'继续 ▸',onDone:after}); }
@@ -934,6 +1005,7 @@ function startEnding(){
 }
 $('btnRetry').addEventListener('click',function(){
   hearts=3;paused=false;running=true;
+  failCount++;
   $('btnRetry').textContent='再试一次';
   cur.init(state);
   hideAll();
@@ -958,8 +1030,23 @@ $('btnStart').addEventListener('click',function(){ storyMode=false;arcade=false;
 $('btnStory').addEventListener('click',function(){ storyMode=true;arcade=false;beginPrologue(); });
 $('btnArcade').addEventListener('click',function(){
   if(ASSET.roleBai&&ASSET.roleBai.indexOf('__')!==0)$('selImg1').src=ASSET.roleBai;
+  var unlocked=localStorage.getItem('wave_endless')==='1';
+  $('btnEndless').style.display=unlocked?'block':'none';
+  $('myBest').textContent='最高分：'+((loadBoard()[0]||{}).score||0);
   show('ovSelect'); });
 $('btnSelBack').addEventListener('click',function(){ show('ovCover'); });
+$('btnBoard').addEventListener('click',function(){ renderBoard(); show('ovBoard'); });
+$('btnBoardBack').addEventListener('click',function(){ show('ovSelect'); });
+$('btnEndless').addEventListener('click',function(){
+  endless=true;arcade=true;storyMode=false;
+  day=1+Math.floor(Math.random()*3);
+  totalScore=0;hearts=3;starCount=0;cur=GAME[day]();state=cur;
+  hideAll();hud(true,'♾️ 无尽 · '+DAYS[day].tag,DAYS[day].how);
+  showChat([{w:'n',t:'（无尽模式：三关轮换，看看一轮能攒多少分！）'}],{goLabel:'开始 ▸',onDone:function(){
+    hideAll();cur.init(state);running=true;paused=false;
+    startLoop();
+  }});
+});
 [[1,'selD1'],[2,'selD2'],[3,'selD3']].forEach(function(p){
   $(''+p[1]).addEventListener('click',function(){
     arcade=true;storyMode=false;day=p[0];

@@ -104,11 +104,24 @@
 
 <!-- 排行榜 -->
 <div class="ov hidden" id="ovBoard">
-  <h1 style="font-size:24px;">🏆 总分排行榜</h1>
-  <p class="sub" style="margin-bottom:10px;">每一关的得分都会累计 · 本地保存前 8 名</p>
-  <div id="boardList" style="width:min(80vw,320px);margin-bottom:14px;"></div>
+  <h1 style="font-size:24px;">🏆 排行榜</h1>
+  <div id="boardTabs" style="display:flex;gap:6px;margin:8px 0 10px;flex-wrap:wrap;justify-content:center;">
+    <button class="btab active" data-b="day1">🏄 晨市</button>
+    <button class="btab" data-b="day2">🎣 深潜</button>
+    <button class="btab" data-b="day3">🎯 弹珠</button>
+    <button class="btab" data-b="global">🌍 全球</button>
+  </div>
+  <div id="boardList" style="width:min(84vw,330px);margin-bottom:14px;min-height:120px;"></div>
+  <div style="font-size:12px;opacity:.7;margin-bottom:10px;">我的名字：<b id="myName" style="color:#ffd166;"></b>
+    <button class="btn ghost" id="btnRename" style="padding:2px 10px;font-size:12px;margin-left:6px;">改名</button></div>
   <button class="btn ghost" id="btnBoardBack">← 返回</button>
 </div>
+
+<style>
+  .btab{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.25);color:#fff;
+    padding:6px 12px;border-radius:999px;font-size:13px;cursor:pointer;}
+  .btab.active{background:#ffd166;color:#4a2c2a;font-weight:700;}
+</style>
 
 <!-- 封面 -->
 <div class="ov" id="ovCover">
@@ -119,6 +132,9 @@
   <button class="btn ghost" id="btnStory" style="margin-top:10px;">📖 剧情模式 · 只看故事</button>
   <button class="btn ghost" id="btnArcade" style="margin-top:10px;">🎮 纯游戏模式 · 选关试玩</button>
 </div>
+
+<!-- 纯游戏退出 -->
+<button class="btn ghost" id="btnQuitGame" style="display:none;position:fixed;top:calc(env(safe-area-inset-top, 0px) + 8px);right:10px;z-index:50;padding:6px 14px;font-size:13px;background:rgba(13,33,55,.5);color:#fff;">✕ 退出</button>
 
 <!-- 失败 -->
 <div class="ov hidden" id="ovFail">
@@ -487,11 +503,11 @@ GAME[1]=function(){return{
       if(s.overT>1.2){ s.overT=0;
         hearts--;hud(true,null,'🐟 '+s.score+' / 150 分');
         if(hearts<=0){ running=false;hearts=3;
-          if(endless){ var b=loadBoard();b.push({score:totalScore,t:Date.now()});
-            b.sort(function(a,c){return c.score-a.score;});saveBoard(b);endless=false;
-            $('failText').innerHTML='♾️ 无尽结束！本轮总分 <b style="color:#ffd166;">'+totalScore+'</b>（已记入排行榜）';
-          } else $('failText').textContent='当日失败…总分 '+s.score+
-            (failCount>=2?'\n（小提示：大件放中间，同款别拆散）':'');
+          recordScore('day1',s.score);
+          if(endless){ endless=false;
+            $('failText').innerHTML='♾️ 无尽结束！本轮总分 <b style="color:#ffd166;">'+totalScore+'</b><br>（'+playerName()+' · 已提交全球排行）';
+          } else $('failText').textContent=playerName()+' 的当日成绩：'+s.score+
+            (failCount>=2?'（小提示：大件放中间，同款别拆散）':'');
           show('ovFail');return; }
         var topY=Infinity,topArr=[];
         for(var m=0;m<s.items.length;m++){ if(s.items[m].y<topY)topY=s.items[m].y; }
@@ -705,14 +721,20 @@ GAME[3]=function(){return{
   init:function(s){
     s.wave=1;s.balls=4;s.maxBalls=12;s.fi=0;s.done=false;s.dolT=0;
     s.aimX=0.5;s.aiming=false;s.flying=[];s.remain=0;
-    s.blocks=[];s.cellH=H/14;s.betweenT=0;
+    s.blocks=[];s.bumpers=[];s.cellH=H/14;s.betweenT=0;
     this.spawnWave(s);
     starCount=0;state.goalLabel='🎯 第 1 / 8 波';
     dlg({w:'note',t:'老板：「帮我打椰子招揽客人，赢满 8 波，摊位分你一成！」按住拖动瞄准（虚线是弹道），松手发射。方块每轮下压一格——压到沙滩就完了！'});},
   spawnWave:function(s){
-    var n=4+s.wave;
+    /* 更多砖（6-10 块）但随机留空列 + 圆形障碍增加随机反弹 */
+    var n=5+Math.min(5,s.wave);
+    var used={};
     for(var i=0;i<n;i++){
       var col=Math.floor(Math.random()*5);
+      var tries=0;
+      while(used[col]&&tries<8){ col=Math.floor(Math.random()*5);tries++; }
+      if(used[col])continue;  /* 保证空隙：同波不重复列 */
+      used[col]=1;
       var hp=s.wave+Math.floor(s.wave/2)+(Math.random()<0.3?1:0);
       var type='normal';
       if(s.wave%3===0&&i===0)type='coco';
@@ -720,6 +742,12 @@ GAME[3]=function(){return{
       else if(Math.random()<0.10)type='bottle';
       if(type==='shell')hp*=2;
       s.blocks.push({col:col,row:(s.wave===1?0:-1)-Math.floor(i/3),hp:hp,type:type,x:0,y:0,w:0,h:0,dead:false});
+    }
+    /* 圆形障碍（海星浮标）：2-3 个，圆碰撞产生不可预测反弹 */
+    s.bumpers=[];
+    var nb=2+Math.floor(Math.random()*2);
+    for(var b2=0;b2<nb;b2++){
+      s.bumpers.push({x:W*(0.2+Math.random()*0.6),y:H*0.28+Math.random()*H*0.3,r:22,phase:Math.random()*7});
     }
     this.layout(s);},
   layout:function(s){
@@ -743,10 +771,13 @@ GAME[3]=function(){return{
     if(s.aiming&&!touchDown&&s.remain===0){
       s.aiming=false;
       /* 从炮口沿瞄准角发射，扇形散开 */
-      var baseAng=Math.atan2(H-56-50, (W/2)-(s.aimX*W));  /* 从瞄准点指向上的角度 */
-      if(!isFinite(baseAng)||baseAng>0)baseAng=-Math.PI/2;
+      /* Ballz 式瞄准：手指相对屏幕中心的水平偏移决定角度（拖左射右），±60° */
+      var dx=(s.aimX-0.5)*2;               /* -1..1 */
+      var baseAng=-Math.PI/2 - dx*1.05;    /* 拖左(dx<0)→角度变大→射向右上；拖右→射向左上 */
+      if(baseAng>-Math.PI/6)baseAng=-Math.PI/6;
+      if(baseAng<-Math.PI*5/6)baseAng=-Math.PI*5/6;
       for(var b=0;b<s.balls;b++){
-        var a2=baseAng+((b-(s.balls-1)/2))*0.06;
+        var a2=baseAng+((b-(s.balls-1)/2))*0.05;
         s.flying.push({x:W/2,y:H-60,vx:Math.cos(a2)*330,vy:Math.sin(a2)*330,
           trail:[],dead:false,launchT:t});
         s.remain++;
@@ -784,6 +815,25 @@ GAME[3]=function(){return{
                 for(var m=0;m<s.blocks.length;m++){ if(s.blocks[m].col===bk.col)s.blocks[m].dead=true; }
                 fxHeavy(cx2,cy2,'漂流瓶 清列！','#ffd166'); }
               else fxBurst(cx2,cy2,5,{color:'#ffd166'});
+            }
+            break;
+          }
+        }
+        /* 圆形障碍：法线反射 + 轻微随机扰动 */
+        for(var bi=0;bi<(s.bumpers||[]).length;bi++){ var bu=s.bumpers[bi];
+          var ddx=bl.x-bu.x, ddy=bl.y-bu.y, dd=Math.hypot(ddx,ddy);
+          if(dd<bu.r+6&&dd>0.01){
+            var nx2=ddx/dd, ny2=ddy/dd;
+            var dot2=bl.vx*nx2+bl.vy*ny2;
+            if(dot2<0){
+              bl.vx-=2*dot2*nx2; bl.vy-=2*dot2*ny2;
+              /* 随机扰动 ±8° */
+              var jig=(Math.random()-0.5)*0.28;
+              var cs=Math.cos(jig), sn=Math.sin(jig);
+              var nvx=bl.vx*cs-bl.vy*sn, nvy=bl.vx*sn+bl.vy*cs;
+              bl.vx=nvx; bl.vy=nvy;
+              bl.x=bu.x+nx2*(bu.r+7); bl.y=bu.y+ny2*(bu.r+7);
+              fxLight(bl.x,bl.y,'#7ec8e3');
             }
             break;
           }
@@ -833,6 +883,15 @@ GAME[3]=function(){return{
         X.fillText(b.type==='coco'?'🥥':(b.type==='shell'?'🐚':'🍾'),b.x+b.w/2,b.y+b.h/2+6); }
       X.fillStyle='#fff';X.font='12px sans-serif';
       X.fillText(b.hp,b.x+b.w/2,b.y+b.h/2+4);}
+    /* 海星浮标（圆障碍） */
+    for(var bui=0;bui<(s.bumpers||[]).length;bui++){ var bu2=s.bumpers[bui];
+      X.globalAlpha=0.75;
+      X.font='30px serif';X.textAlign='center';X.textBaseline='middle';
+      X.fillText('⭐',bu2.x+Math.sin(t*0.003+bu2.phase)*3,bu2.y);
+      X.globalAlpha=1;
+      X.strokeStyle='rgba(126,200,227,.4)';X.lineWidth=1.5;
+      X.beginPath();X.arc(bu2.x,bu2.y,bu2.r,0,7);X.stroke(); }
+    X.textBaseline='alphabetic';
     /* 飞行弹珠 + 拖尾 */
     for(var fi=0;fi<s.flying.length;fi++){ var fb=s.flying[fi];
       for(var ti=0;ti<fb.trail.length;ti++){ var tp=fb.trail[ti];
@@ -848,8 +907,10 @@ GAME[3]=function(){return{
     X.font='26px serif';X.textAlign='center';
     X.fillText('🔴',W/2,H-40);
     if(s.aiming&&s.remain===0){
-      var baseAng=Math.atan2(H-56-50,(W/2)-(s.aimX*W));
-      if(!isFinite(baseAng)||baseAng>0)baseAng=-Math.PI/2;
+      var dx=(s.aimX-0.5)*2;
+      var baseAng=-Math.PI/2 - dx*1.05;
+      if(baseAng>-Math.PI/6)baseAng=-Math.PI/6;
+      if(baseAng<-Math.PI*5/6)baseAng=-Math.PI*5/6;
       X.strokeStyle='rgba(255,209,102,.7)';X.lineWidth=2;X.setLineDash([5,5]);
       X.beginPath();X.moveTo(W/2,H-56);
       var dx=Math.cos(baseAng)*8,dy=Math.sin(baseAng)*8,lx=W/2,ly=H-56;
@@ -946,25 +1007,99 @@ var ENDINGS=[
 var cur=null,storyMode=false,arcade=false;
 /* ============ 总分 & 排行榜 & 无尽模式 ============ */
 var totalScore=0,endless=false,failCount=0;
+/* 玩家名：localStorage 记住，可随机 */
+function playerName(){
+  var n=null;
+  try{ n=localStorage.getItem('wave_name'); }catch(e){}
+  if(n)return n;
+  var adj=['快乐','勇敢','咸咸','闪闪','泡泡','浪花','小鱼','海风','柚子','团子'];
+  var noun=['小狗','海豹','河豚','鲸鱼','螃蟹','水母','海星','贝壳','鱼干','浮标'];
+  n=adj[Math.floor(Math.random()*adj.length)]+noun[Math.floor(Math.random()*noun.length)]+
+    Math.floor(100+Math.random()*900);
+  try{ localStorage.setItem('wave_name',n); }catch(e){}
+  return n;
+}
+function setPlayerName(n){
+  n=(n||'').trim().slice(0,10);
+  if(!n)n=playerName();
+  try{ localStorage.setItem('wave_name',n); }catch(e){}
+  return n;
+}
+function submitScore(game,score,name){
+  try{
+    /* text/plain 触发不了 CORS preflight，服务端自己 JSON 解析 body */
+    fetch('http://120.78.2.102:7880/score/',{method:'POST',
+      body:JSON.stringify({game:game,name:name,score:score})}).catch(function(){});
+  }catch(e){}
+}
+function loadBoard2(game){ try{
+  var all=JSON.parse(localStorage.getItem('wave_board2')||'{}');
+  return all[game]||[];
+}catch(e){ return []; } }
+function saveBoard2(game,board){
+  try{
+    var all=JSON.parse(localStorage.getItem('wave_board2')||'{}');
+    all[game]=board.slice(0,8);
+    localStorage.setItem('wave_board2',JSON.stringify(all));
+  }catch(e){}
+}
+function recordScore(game,score){
+  if(score<=0)return 0;
+  var name=playerName();
+  var entry={score:score,t:Date.now(),name:name};
+  var b=loadBoard2(game);b.push(entry);
+  b.sort(function(a,c){return c.score-a.score;});
+  saveBoard2(game,b);
+  submitScore(game,score,name);
+  var rank=b.indexOf(entry)+1;
+  return rank;
+}
 function loadBoard(){ try{ return JSON.parse(localStorage.getItem('wave_board')||'[]'); }catch(e){ return []; } }
 function saveBoard(b){ try{ localStorage.setItem('wave_board',JSON.stringify(b.slice(0,8))); }catch(e){} }
 function fmtDate(ts){ var d=new Date(ts);
   return (d.getMonth()+1)+'/'+d.getDate()+' '+('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2); }
-function renderBoard(){
-  var b=loadBoard(),box=$('boardList');
-  if(!b.length){ box.innerHTML='<div style="opacity:.6;padding:8px;">还没有记录，快去创造第一个！</div>'; return; }
+var curBoardTab='day1';
+function renderRow(r,i){
   var medal=['🥇','🥈','🥉'];
-  box.innerHTML=b.map(function(r,i){
-    return '<div style="display:flex;justify-content:space-between;padding:8px 14px;border-radius:10px;'+
-      'background:'+(i<3?'rgba(255,209,102,.18)':'rgba(255,255,255,.08)')+';margin-bottom:6px;">'+
-      '<span>'+(medal[i]||('No.'+(i+1)))+'</span>'+
-      '<span style="flex:1;margin-left:10px;color:rgba(255,255,255,.7);font-size:12px;align-self:center;">'+fmtDate(r.t)+'</span>'+
-      '<b style="color:#ffd166;">'+r.score+'</b></div>';
-  }).join('');
+  var isMe=r.name===playerName();
+  return '<div style="display:flex;justify-content:space-between;padding:8px 14px;border-radius:10px;'+
+    'background:'+(i<3?'rgba(255,209,102,.18)':'rgba(255,255,255,.08)')+';margin-bottom:6px;'+
+    (isMe?'outline:1px solid rgba(255,209,102,.6);':'')+'">'+
+    '<span>'+(medal[i]||('No.'+(i+1)))+'</span>'+
+    '<span style="flex:1;margin-left:10px;text-align:left;font-size:13px;">'+(r.name||'无名')+(isMe?' (我)':'')+'</span>'+
+    '<span style="color:rgba(255,255,255,.6);font-size:11px;align-self:center;">'+fmtDate(r.t)+'</span>'+
+    '<b style="color:#ffd166;margin-left:8px;">'+r.score+'</b></div>';
+}
+function renderBoard(){
+  $('myName').textContent=playerName();
+  var box=$('boardList');
+  if(curBoardTab==='global'){
+    box.innerHTML='<div style="opacity:.6;padding:8px;">🌍 全球榜加载中…</div>';
+    var games=['day1','day2','day3'];
+    var all=[];
+    var done=0;
+    games.forEach(function(g){
+      fetch('http://120.78.2.102:7880/score/?game='+g+'&t='+Date.now())
+        .then(function(r){return r.json();})
+        .then(function(list){ all=all.concat(list||[]); })
+        .catch(function(){})
+        .finally(function(){ done++;
+          if(done<games.length)return;
+          if(!all.length){ box.innerHTML='<div style="opacity:.6;padding:8px;">全球榜暂无记录，来当第一名！</div>'; return; }
+          all.sort(function(a,c){return c.score-a.score;});
+          box.innerHTML=all.slice(0,10).map(renderRow).join('');
+        });
+    });
+    return;
+  }
+  var b=loadBoard2(curBoardTab);
+  if(!b.length){ box.innerHTML='<div style="opacity:.6;padding:8px;">这一关还没有记录，快去创造第一个！</div>'; return; }
+  box.innerHTML=b.map(renderRow).join('');
 }
 
 function startDay(){
   running=false;hearts=3;starCount=0;cur=GAME[day]();state=cur;
+  $('btnQuitGame').style.display='none';
   hud(false);
   showChat(DAYS[day].intro,{goLabel:storyMode?'继续 ▸':'出发 ▸',onDone:function(){
     if(storyMode){ finishWin(); return; }
@@ -977,16 +1112,17 @@ function finishWin(){
   running=false;dlg(null);hud(false);
   localStorage.setItem('wave_endless','1');
   if(arcade){
-    var entry={score:totalScore,t:Date.now()};
+    var gameKey=endless?'endless':'day'+day;
+    var thisScore=endless?totalScore:(day===3?(state.wave-1)*100+(state.gateIdx||0)*10:(state.score||0));
+    var rank=recordScore(gameKey,thisScore);
     if(endless){
-      var b=loadBoard();b.push(entry);b.sort(function(a,c){return c.score-a.score;});saveBoard(b);
-      var rank=b.indexOf(entry)+1; if(rank<0)rank=0;
-      $('failText').innerHTML='♾️ 无尽结束！<br><br>本轮总分 <b style="color:#ffd166;font-size:26px;">'+totalScore+'</b><br>'+
-        (rank>0&&rank<=8?'🏆 排行榜第 '+rank+' 名！':'继续加油！')+'<br>最高分：'+((loadBoard()[0]||{}).score||totalScore);
       endless=false;
+      $('failText').innerHTML='♾️ 无尽结束！<br><br>'+playerName()+' 本轮总分 <b style="color:#ffd166;font-size:26px;">'+totalScore+'</b><br>'+
+        (rank>0&&rank<=8?'🏆 无尽榜第 '+rank+' 名！':'继续加油！')+'<br>已同步全球排行';
       $('btnRetry').textContent='再来一轮';
     } else {
-      $('failText').innerHTML='✅ 过关！<br><br>'+DAYS[day].title+' 完成<br><span style="font-size:13px;opacity:.8;">累计总分 '+totalScore+'</span>';
+      $('failText').innerHTML='✅ 过关！<br><br>'+DAYS[day].title+' 完成<br><span style="font-size:13px;opacity:.8;">本关得分 '+thisScore+' · '+playerName()+
+        (rank>0&&rank<=8?' · 🏆 本地第 '+rank:'')+'</span>';
       $('btnRetry').textContent='再玩一次';
     }
     show('ovFail'); return; }
@@ -1032,16 +1168,39 @@ $('btnArcade').addEventListener('click',function(){
   if(ASSET.roleBai&&ASSET.roleBai.indexOf('__')!==0)$('selImg1').src=ASSET.roleBai;
   var unlocked=localStorage.getItem('wave_endless')==='1';
   $('btnEndless').style.display=unlocked?'block':'none';
-  $('myBest').textContent='最高分：'+((loadBoard()[0]||{}).score||0);
+  $('myBest').textContent='🏄'+((loadBoard2('day1')[0]||{}).score||0)+
+    ' · 🎣'+((loadBoard2('day2')[0]||{}).score||0)+
+    ' · 🎯'+((loadBoard2('day3')[0]||{}).score||0)+'（我的本地最佳）';
   show('ovSelect'); });
 $('btnSelBack').addEventListener('click',function(){ show('ovCover'); });
+$('btnQuitGame').addEventListener('click',function(){
+  running=false;paused=false;endless=false;
+  $('btnQuitGame').style.display='none';
+  if(totalScore>0&&endless){ recordScore('endless',totalScore); }
+  show('ovSelect');
+});
 $('btnBoard').addEventListener('click',function(){ renderBoard(); show('ovBoard'); });
 $('btnBoardBack').addEventListener('click',function(){ show('ovSelect'); });
+document.querySelectorAll('.btab').forEach(function(bt){
+  bt.addEventListener('click',function(){
+    document.querySelectorAll('.btab').forEach(function(x){x.classList.remove('active');});
+    bt.classList.add('active');
+    curBoardTab=bt.getAttribute('data-b');
+    renderBoard();
+  });
+});
+$('btnRename').addEventListener('click',function(){
+  var n=prompt('给自己起个名字（最多10字，留空随机）：',playerName());
+  if(n===null)return;
+  setPlayerName(n);
+  $('myName').textContent=playerName();
+});
 $('btnEndless').addEventListener('click',function(){
   endless=true;arcade=true;storyMode=false;
   day=1+Math.floor(Math.random()*3);
   totalScore=0;hearts=3;starCount=0;cur=GAME[day]();state=cur;
   hideAll();hud(true,'♾️ 无尽 · '+DAYS[day].tag,DAYS[day].how);
+  $('btnQuitGame').style.display='block';
   showChat([{w:'n',t:'（无尽模式：三关轮换，看看一轮能攒多少分！）'}],{goLabel:'开始 ▸',onDone:function(){
     hideAll();cur.init(state);running=true;paused=false;
     startLoop();
@@ -1052,6 +1211,7 @@ $('btnEndless').addEventListener('click',function(){
     arcade=true;storyMode=false;day=p[0];
     running=false;hearts=3;starCount=0;cur=GAME[day]();state=cur;
     hideAll();hud(true,DAYS[day].tag,DAYS[day].how);
+    $('btnQuitGame').style.display='block';
     showChat([{w:'n',t:'（纯游戏模式 · '+DAYS[day].title+'）'}],{goLabel:'开始 ▸',onDone:function(){
       hideAll();cur.init(state);running=true;paused=false;
       startLoop();

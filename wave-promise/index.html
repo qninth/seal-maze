@@ -204,7 +204,8 @@ var memories=[],state={};
 
 function show(id){ ['ovCover','ovChat','ovFail','ovEnd','ovSelect','ovBoard'].forEach(function(o){
   $(o).classList.toggle('hidden',o!==id); }); }
-function hideAll(){ show('__none__'); }
+function hideAll(){ show('__none__');
+  X.clearRect(0,0,W,H);X.fillStyle='#0d2137';X.fillRect(0,0,W,H); }
 function hud(on,label,goalText2){
   $('hud').style.display=on?'flex':'none';
   if(label)$('dayLabel').textContent=label;
@@ -573,14 +574,14 @@ GAME[1]=function(){return{
       if(it.y-it.r<s.lineY&&Math.abs(it.vy)<40){ over=true;break; } }
     if(over){ s.overT=(s.overT||0)+dt;
       if(s.overT>1.2){ s.overT=0;
-        hearts--;hud(true,null,'🐟 '+s.score+' / 150 分');
-        if(hearts<=0){ running=false;hearts=3;
-          recordScore('day1',s.score);
-          if(endless){ endless=false;
-            $('failText').innerHTML='♾️ 无尽结束！本轮总分 <b style="color:#ffd166;">'+totalScore+'</b><br>（'+playerName()+' · 已提交全球排行）';
-          } else $('failText').textContent=playerName()+' 的当日成绩：'+s.score+
-            (failCount>=2?'（小提示：大件放中间，同款别拆散）':'');
-          show('ovFail');return; }
+        /* D1 一击即输 */
+        running=false;hearts=3;
+        recordScore('day1',s.score);
+        if(endless){ endless=false;
+          $('failText').innerHTML='♾️ 无尽结束！本轮总分 <b style="color:#ffd166;">'+totalScore+'</b><br>（'+playerName()+' · 已提交全球排行）';
+        } else $('failText').textContent=playerName()+' 的当日成绩：'+s.score+
+          (failCount>=2?'（小提示：大件放中间，同款别拆散）':'');
+        show('ovFail');return;
         var topY=Infinity,topArr=[];
         for(var m=0;m<s.items.length;m++){ if(s.items[m].y<topY)topY=s.items[m].y; }
         for(var m2=s.items.length-1;m2>=0;m2--){ if(s.items[m2].y<topY+SUIKA_TYPES[s.items[m2]].type)r; }
@@ -645,9 +646,34 @@ GAME[2]=function(){return{
   init:function(s){
     s.trips=3;s.trip=1;s.score=0;s.fi=0;s.done=false;s.dolT=0;
     s.depth=0;s.o2=100;s.bag=0;s.mode='dive';
-    s.px=0.5;s.creatures=[];s.spawnT=0;s.netCd=0;s.pearl=false;s.pearlSpawned=false;
-    starCount=0;state.goalLabel='💰 0 / 60 分';
-    dlg({w:'note',t:'老板：「听说 280 米下有枚「约定之珠」，能定一辈子。」按住下潜、松手上浮，回到水面鱼获就落袋！越深越值钱——但氧气会用完。快速点一下可以撒网。'});},
+    s.px=0.5;s.creatures=[];s.spawnT=0;s.netCd=0;s.pearl=false;
+    starCount=0;state.goalLabel='💰 0 / 90 分';
+    /* 黄金矿工式全图生成：每 22m 一格，开局全部可见可规划 */
+    for(var gd=30;gd<=270;gd+=22){
+      var zn=Math.min(5,Math.floor(gd/45));
+      var tbl=[
+        [{e:'🐟',v:1,jelly:false,eel:false}],
+        [{e:'🐡',v:3,jelly:false,eel:false},{e:'🪼',v:0,jelly:true,eel:false}],
+        [{e:'🪼',v:0,jelly:true,eel:false},{e:'🐠',v:6,jelly:false,eel:false}],
+        [{e:'🪼',v:0,jelly:true,eel:false},{e:'🐙',v:9,jelly:false,eel:false},{e:'🐍',v:0,jelly:false,eel:true}],
+        [{e:'🌙',v:12,jelly:false,eel:false},{e:'🐍',v:0,jelly:false,eel:true}],
+        [{e:'🌙',v:12,jelly:false,eel:false},{e:'💎',v:40,jelly:false,eel:false,pearl:true}]
+      ];
+      var row=tbl[zn];
+      var pk=row[Math.floor(Math.random()*row.length)];
+      s.creatures.push({e:pk.e,v:pk.v,x:0.12+Math.random()*0.76,d:gd,
+        jelly:pk.jelly,eel:pk.eel,pearl:pk.pearl||false,vx:pk.eel?(Math.random()<0.5?-25:25):0});
+    }
+    var nL=0,nE=0,nP=0;
+    for(var ck=0;ck<s.creatures.length;ck++){
+      if(s.creatures[ck].v===6)nL++;
+      if(s.creatures[ck].eel)nE++;
+      if(s.creatures[ck].pearl)nP++;
+    }
+    if(!nL)s.creatures.push({e:'🐠',v:6,x:0.5,d:120,jelly:false,eel:false,vx:15});
+    if(!nE)s.creatures.push({e:'🐍',v:0,x:0.7,d:180,jelly:false,eel:true,vx:25});
+    if(!nP)s.creatures.push({e:'💎',v:40,x:0.35,d:265,jelly:false,eel:false,pearl:true,vx:20});
+    dlg({w:'note',t:'老板：「听说 280 米下有枚「约定之珠」，能定一辈子。」按住下潜、松手上浮，回到水面鱼获就落袋！全图的鱼和水母都摆在明面上——规划好路线再下。快速点一下撒网。'});},
   update:function(dt,t,s){
     if(s.done&&t-s.dolT>1.2){ finishWin();return; }
     s.netCd-=dt;
@@ -672,27 +698,9 @@ GAME[2]=function(){return{
       }
     }
     if(s.depth>280)s.depth=280;
-    s.spawnT-=dt;
-    if(s.spawnT<=0&&s.depth>25){
-      s.spawnT=1.8+Math.random()*1.2;   /* 密度减半 */
-      var zone=Math.min(5,Math.floor(s.depth/45));
-      var table=[
-        [{e:'🐟',v:1,jelly:false,eel:false}],
-        [{e:'🐡',v:3,jelly:false,eel:false},{e:'🪼',v:0,jelly:true,eel:false}],
-        [{e:'🪼',v:0,jelly:true,eel:false},{e:'🐠',v:6,jelly:false,eel:false}],
-        [{e:'🪼',v:0,jelly:true,eel:false},{e:'🐙',v:9,jelly:false,eel:false},{e:'🐍',v:0,jelly:false,eel:true}],
-        [{e:'🌙',v:12,jelly:false,eel:false},{e:'🐍',v:0,jelly:false,eel:true}],
-        [{e:'🌙',v:12,jelly:false,eel:false},{e:'💎',v:40,jelly:false,eel:false,pearl:true}]
-      ];
-      var t2=table[zone];
-      var pick=t2[Math.floor(Math.random()*t2.length)];
-      s.creatures.push({e:pick.e,v:pick.v,x:0.15+Math.random()*0.7,
-        d:s.depth+(Math.random()-0.5)*50,jelly:pick.jelly,eel:pick.eel,pearl:pick.pearl||false,
-        vx:(Math.random()-0.5)*40});
-    }
-    if(s.depth>200&&!s.pearlSpawned){ s.pearlSpawned=true;
-      s.creatures.push({e:'💎',v:40,x:0.3+Math.random()*0.4,d:265,jelly:false,pearl:true,vx:20});
-      fxFloat(W/2,H*0.35,'✨ 下方传来约定的光芒…','#ffd166'); }
+    /* 黄金矿工式：生物进关时全生成完毕，运行时只更新鳗鱼巡逻 */
+    for(var ei=0;ei<s.creatures.length;ei++){ var ec=s.creatures[ei];
+      if(ec.eel){ ec.x+=ec.vx*dt/60; if(ec.x<0.15||ec.x>0.85)ec.vx*=-1; } }
     for(var i=s.creatures.length-1;i>=0;i--){ var c=s.creatures[i];
       if(c.eel){ var dir=s.px-c.x;
         if(Math.abs(c.d-s.depth)<80){ c.x+=Math.sign(dir)*0.06*dt;
@@ -834,6 +842,7 @@ GAME[3]=function(){return{
       else if(Math.random()<0.12)type='shell';
       else if(Math.random()<0.10)type='bottle';
       if(type==='shell')hp*=2;
+      if(s.wave>=4&&Math.random()<0.10)type='hourglass';
       s.blocks.push({col:col,row:(s.wave===1?0:-1)-Math.floor(i/3),hp:hp,type:type,x:0,y:0,w:0,h:0,dead:false});
     }
     /* 圆形障碍（海星浮标）：2-3 个，圆碰撞产生不可预测反弹 */
@@ -879,7 +888,8 @@ GAME[3]=function(){return{
     }
     for(var i=s.flying.length-1;i>=0;i--){ var bl=s.flying[i];
       bl.airT=(bl.airT||0)+dt;
-      if(bl.airT>6){ /* 死球强制回收（防循环反弹） */
+      var maxAir=(t<(s.graceUntil||0))?12:6;   /* 沙漏 buff：12s */
+      if(bl.airT>maxAir){ /* 死球强制回收（防循环反弹） */
         bl.dead=true;fxFloat(bl.x,Math.min(H-40,bl.y),'弹珠回收','#7ec8e3'); }
       bl.trail.push({x:bl.x,y:bl.y});
       if(bl.trail.length>7)bl.trail.shift();
@@ -911,6 +921,9 @@ GAME[3]=function(){return{
               else if(bk.type==='bottle'){
                 for(var m=0;m<s.blocks.length;m++){ if(s.blocks[m].col===bk.col)s.blocks[m].dead=true; }
                 fxHeavy(cx2,cy2,'漂流瓶 清列！','#ffd166'); }
+              else if(bk.type==='hourglass'){
+                s.graceUntil=t+30;  /* 30 秒内死球回收延长到 12s */
+                fxMedium(cx2,cy2,'⏳ 慢速回收 30s','#7ec8e3'); }
               else fxBurst(cx2,cy2,5,{color:'#ffd166'});
             }
             break;
@@ -961,16 +974,12 @@ GAME[3]=function(){return{
         if(s.blocks[d3].row>=8)dangerRow=true; }
       if(dangerRow&&!hitFloor&&s.wave<8){
         fxFloat(W/2,lineY-30,'⚠ 快到沙滩了！优先打低处的方块','#ff9a5c'); }
-      if(hitFloor){ hearts--;hud(true);
-        for(var d4=0;d4<s.blocks.length;d4++){ s.blocks[d4].row=Math.max(0,s.blocks[d4].row-2); }
-        this.layout(s);
-        fxHeavy(W/2,lineY||H*0.7,'海浪推回！','#7ec8e3');
-        if(hearts<=0){ running=false;hearts=3;
-          if(endless){ recordScore('endless',totalScore); endless=false;
-            $('failText').innerHTML='♾️ 无尽结束！'+playerName()+' 本轮总分 <b style="color:#ffd166;">'+totalScore+'</b>（已记入无尽榜）';
-          } else { recordScore('day3',(s.wave-1)*100+s.gateIdx*10);
-            $('failText').textContent=playerName()+' 撑到第 '+s.wave+' 波'; }
-          show('ovFail');return; } }
+      if(hitFloor){ running=false;hearts=3;
+        if(endless){ recordScore('endless',totalScore); endless=false;
+          $('failText').innerHTML='♾️ 无尽结束！本轮总分 <b style="color:#ffd166;">'+totalScore+'</b>（已记入无尽榜）';
+        } else { recordScore('day3',(s.wave-1)*100+s.gateIdx*10);
+          $('failText').textContent=playerName()+' 撑到第 '+s.wave+' 波'; }
+        show('ovFail');return; }
       s.betweenT=s.roundHitN?0.7:0.25;  /* 空轮快速过 */
       s.roundHitN=0;
     }},
@@ -985,11 +994,11 @@ GAME[3]=function(){return{
     X.fillText('沙滩',8,lineY+14);
     for(var i=0;i<s.blocks.length;i++){ var b=s.blocks[i];
       if(b.dead)continue;
-      X.fillStyle=b.type==='coco'?'#8a6a3a':(b.type==='shell'?'#7a5aa0':(b.type==='bottle'?'#3a7a5a':'rgba(70,110,160,.85)'));
+      X.fillStyle=b.type==='coco'?'#8a6a3a':(b.type==='shell'?'#7a5aa0':(b.type==='bottle'?'#3a7a5a':(b.type==='hourglass'?'#3a8a8a':'rgba(70,110,160,.85)')));
       X.fillRect(b.x,b.y,b.w,b.h);
       X.strokeStyle='rgba(255,255,255,.25)';X.lineWidth=1;X.strokeRect(b.x,b.y,b.w,b.h);
       if(b.type!=='normal'){ X.font='16px serif';X.textAlign='center';
-        X.fillText(b.type==='coco'?'🥥':(b.type==='shell'?'🐚':'🍾'),b.x+b.w/2,b.y+b.h/2+6); }
+        X.fillText(b.type==='coco'?'🥥':(b.type==='shell'?'🐚':(b.type==='bottle'?'🍾':'⏳')),b.x+b.w/2,b.y+b.h/2+6); }
       X.fillStyle='#fff';X.font='12px sans-serif';
       X.fillText(b.hp,b.x+b.w/2,b.y+b.h/2+4);}
     /* 海星浮标（圆障碍） */
@@ -1373,6 +1382,9 @@ $('btnEndless').addEventListener('click',function(){
 
 /* ================= 主循环 ================= */
 function startLoop(){
+  /* 清一次画布：上一关的画面不会残留到新关卡 */
+  X.clearRect(0,0,W,H);
+  X.fillStyle='#0d2137';X.fillRect(0,0,W,H);
   lastT=performance.now();
   cancelAnimationFrame(raf);
   raf=requestAnimationFrame(loop);

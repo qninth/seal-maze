@@ -1162,7 +1162,10 @@ GAME[2]=function(){return{
               fxFloat(W/2,H*0.4,'🌀 一轮完成 +'+eb+'！氧气补满','#7EE8B8');
               s.o2=100;starCount=0;
               state.goalLabel='💰 '+s.score+' 分 · 无尽'; }
-            else { s.done=true;s.dolT=t;return; } }
+            else {
+              /* 趟数用完：按分数结算胜负（达标=胜，否则=负） */
+              s.done=true;s.dolT=t;s.tripClear=s.score>=diffCfg().d2Goal;
+              return; } }
         } else {
           s.o2=Math.min(100,s.o2+30);s.mode='wait';
           fxFloat(W/2,H*0.3,'空手回船 · 氧气补满','#7ec8e3');
@@ -1181,33 +1184,29 @@ GAME[2]=function(){return{
           if(Math.abs(dir)<0.15)c.x+=Math.sign(dir)*0.12*dt; } }
       c.x+=c.vx*dt/300;
       if(c.x<0.08||c.x>0.92)c.vx*=-1;
-      var pd=c.d-s.depth, px2=c.x-s.px;
-      /* 判定收紧：水母=触手正后方 14m/0.05；鳗=嘴部 16m/0.065（不再凭空被蛰） */
-      var jRng=(c.jelly?{d:14,x:0.055}:(c.eel?{d:16,x:0.065}:{d:28,x:0.09}));
-      if(Math.abs(pd)<jRng.d&&Math.abs(px2)<jRng.x){
-        if(c.jelly){ s.hurtT=1.2;s.o2-=diffCfg().d2jelly;c.dead=true;
-          fxArcLine(s.px*W,H*0.5,'#F72585');
-          fxSparkle(s.px*W,H*0.5,4);
-          fxFloat(s.px*W,H*0.42,'⚡ 被蛰了！','#FFD6FF');
-          fxMedium(s.px*W,H/2,'被水母蜇了！','#c792ea'); }
-        else if(c.eel){ s.bag=Math.floor(s.bag*0.7);c.dead=true;s.hurtT=1.0;
-          fxArcLine(s.px*W,H*0.5,'#E87978');
-          fxFloat(s.px*W,H*0.42,'⚠ 鱼获掉了些','#F3A98F');
-          fxHeavy(s.px*W,H/2,'被鳗咬！包-30%','#E87978');
-          hearts--;hud(true);
-          if(hearts<=0){ running=false;hearts=3;
-            if(endless){ recordScore('endless',totalScore); endless=false;
-              $('failText').innerHTML='♾️ 无尽结束！'+playerName()+' 本轮总分 <b style="color:#ffd166;">'+totalScore+'</b>（已记入无尽榜）';
-            } else { recordScore('day2',s.score);
-              $('failText').textContent=playerName()+' 的深海成绩：'+s.score; }
-            show('ovFail');return; } }
-        else if(s.netCd<=0){
-          s.bag+=c.v;s.netCd=1.3;c.dead=true;
-          if(c.pearl){ s.pearl=true;s.score+=40;
-            fxFloat(W/2,H*0.28,'💎 带回水面落袋！','#FFD166');
-            fxHeavy(W/2,H*0.35,'约定之珠！！','#ffd166'); }
-          else { fxSparkle(s.px*W,H/2,6); fxBubbles(s.px*W,H/2+14,4);
-                 fxFloat(s.px*W,H/2-16,'+'+c.v,'#FFE66D'); }
+      /* 危险判定=视觉：像素距离（与红/粉警示圈一致） */
+      var ccy=((c.d-s.depth)/280)*(H-120)+60;
+      var jR=(c.jelly?0.055*W:(c.eel?0.065*W:0));
+      var pxc=c.x*W, pyc=ccy;
+      var ddx=pxc-s.px*W, ddy=pyc-py2;
+      if(c.jelly||c.eel){
+        if(Math.hypot(ddx,ddy)<jR+14){   /* 圈半径+狗身半径14 */
+          if(c.jelly){ s.hurtT=1.2;s.o2-=diffCfg().d2jelly;c.dead=true;
+            fxArcLine(s.px*W,H*0.5,'#F72585');
+            fxSparkle(s.px*W,H*0.5,4);
+            fxFloat(s.px*W,H*0.42,'⚡ 被蛰了！','#FFD6FF');
+            fxMedium(s.px*W,H/2,'被水母蜇了！','#c792ea'); }
+          else { s.bag=Math.floor(s.bag*0.7);c.dead=true;s.hurtT=1.0;
+            fxArcLine(s.px*W,H*0.5,'#E87978');
+            fxFloat(s.px*W,H*0.42,'⚠ 鱼获掉了些','#F3A98F');
+            fxHeavy(s.px*W,H/2,'被鳗咬！包-30%','#E87978');
+            hearts--;hud(true);
+            if(hearts<=0){ running=false;hearts=3;
+              if(endless){ recordScore('endless',totalScore); endless=false;
+                $('failText').innerHTML='♾️ 无尽结束！'+playerName()+' 本轮总分 <b style="color:#ffd166;">'+totalScore+'</b>（已记入无尽榜）';
+              } else { recordScore('day2',s.score);
+                $('failText').textContent=playerName()+' 的深海成绩：'+s.score; }
+              show('ovFail');return; } }
         }
       }
       if(c.dead||c.d<3)s.creatures.splice(i,1);
@@ -1218,8 +1217,10 @@ GAME[2]=function(){return{
         FX.rings.push({x:s.px*W,y:H*0.5,t:0,life:0.3,size:14,col:'#90E0EF',kind:'arc'});
         var best=null,bv=-1;
         for(var n2=0;n2<s.creatures.length;n2++){ var cc=s.creatures[n2];
-          var nw=s.cardNet?0.10:0.062;   /* 网宽=撒网圈视觉半径 */
-          if(!cc.jelly&&Math.abs(cc.d-s.depth)<22&&Math.abs(cc.x-s.px)<nw&&cc.v>bv){ bv=cc.v;best=cc; } }
+          /* 判定=视觉：生物绘制 y=(cc.d-depth)/280*(H-120)+60，与狗距离用像素算 */
+          var cy2=((cc.d-s.depth)/280)*(H-120)+60;
+          var nw2=(s.cardNet?0.10:0.062)*W;
+          if(!cc.jelly&&Math.abs(cy2-py2)<nw2&&Math.abs(cc.x-s.px)*W<nw2&&cc.v>bv){ bv=cc.v;best=cc; } }
         if(best){ var gain=best.v;
           if(s.depth>150&&s.o2<20){ gain*=2;
             fxHeavy(s.px*W,H/2-30,'险中取胜！+'+gain,'#ffd166'); }
@@ -1244,7 +1245,15 @@ GAME[2]=function(){return{
       s.bag=0;s.o2=100;s.depth=0;s.mode='wait';s.creatures=[];
     }
     /* 胜利只看分数（珍珠落袋得 40 分），抓在手里不算 */
-    if(!s.done&&s.score>=diffCfg().d2Goal){ s.done=true;s.dolT=t;
+    /* 趟数用完未达标 → 失败结算（不是胜利） */
+    if(s.done&&!s.tripClear){
+      running=false;hearts=3;
+      recordScore('day2',s.score);
+      $('failText').textContent=playerName()+' · 3 趟结束：'+s.score+' / '+diffCfg().d2Goal+' 分（差一点，再来！）';
+      show('ovFail');return;
+    }
+    if(!s.done&&s.score>=diffCfg().d2Goal){ s.done=true;s.tripClear=true;s.dolT=t;
+      fxHeavy(W/2,H*0.35,'配额达成！回落水面结算','#FFD166');
       fxHeavy(W/2,H*0.3,'今日配额达成！','#ffd166'); }
     hud(true,null,'💰 '+s.score+'/'+diffCfg().d2Goal+' · O₂ '+Math.max(0,Math.floor(s.o2))+'% · 包 '+s.bag);},
   draw:function(t,s){
@@ -1304,10 +1313,10 @@ GAME[2]=function(){return{
     X.fillStyle='#ffd166';X.font='13px sans-serif';
     X.fillText('包里 +'+s.bag,W/2,oy+66);
     X.fillStyle='#F7FCFF';X.strokeStyle='rgba(18,82,108,.8)';X.lineWidth=3;X.font='12px sans-serif';
-    /* 判定范围可视化：所见即所得（黄虚线=撒网捕获范围） */
+    /* 判定范围可视化：黄虚线跟随狗狗 */
     X.save();
     X.strokeStyle='rgba(255,209,102,.75)';X.lineWidth=2;X.setLineDash([6,5]);
-    X.beginPath();X.arc(s.px*W,H*0.5,(s.cardNet?0.10:0.062)*W,0,7);X.stroke();
+    X.beginPath();X.arc(s.px*W,py2,(s.cardNet?0.10:0.062)*W,0,7);X.stroke();
     X.setLineDash([]);
     X.restore();
     var help=s.mode==='dive'?'按住下潜 · 松手上浮 · 点按撒网':'上浮中…回船结算';

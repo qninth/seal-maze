@@ -233,7 +233,7 @@ function hud(on,label,goalText2){
   $('hud').style.display=on?'flex':'none';
   if(label)$('dayLabel').textContent=label;
   if(goalText2)$('goal').textContent=goalText2;
-  $('hearts').textContent='❤️'.repeat(hearts)+'🤍'.repeat(Math.max(0,3-hearts));
+  $('hearts').textContent=(day===2||endless)?('❤️'.repeat(Math.min(hearts,3))+'🤍'.repeat(Math.max(0,3-Math.min(hearts,3)))):'';
 }
 function goalText(){ return (state.goalLabel||('🐚 '+starCount+' / '+starGoal)); }
 function addStar(n){ starCount+=n||1; hud(true,null,goalText()); }
@@ -667,10 +667,10 @@ GAME[1]=function(){return{
 
 /* ================= 玩法B（Day2）：深潜之约 · Push Your Luck ================= */
 GAME[2]=function(){return{
-  goalLabel:'💰 0 / 30',fi:0,starGoal:30,
+  goalLabel:'💰 0 / 90',fi:0,starGoal:90,
   init:function(s){
     s.trips=3;s.trip=1;s.score=0;s.fi=0;s.done=false;s.dolT=0;
-    s.depth=0;s.o2=100;s.bag=0;s.mode='dive';
+    s.depth=0;s.o2=100;s.bag=0;s.mode='wait';
     s.px=0.5;s.creatures=[];s.spawnT=0;s.netCd=0;s.pearl=false;
     starCount=0;state.goalLabel='💰 0 / 90 分';
     /* 黄金矿工式全图生成：每 22m 一格，开局全部可见可规划 */
@@ -712,14 +712,34 @@ GAME[2]=function(){return{
       s.depth+=spd*dt; s.o2-=(1+7*(s.depth/280))*dt*(s.depth<150?1:1.15);
       if(!touchDown)s.mode='rise';
     } else {
-      s.depth-=60*dt; s.o2-=2.5*dt;
+      s.depth-=68*dt; s.o2-=2.5*dt;
       if(s.depth<=0){
         s.depth=0;
+        /* 每趟重新铺满全图（刷新鱼群，保持黄金矿工式可规划） */
+        s.creatures=[];
+        for(var rg=30;rg<=270;rg+=18){
+          var rz=Math.min(5,Math.floor(rg/45));
+          var rt=[
+            [{e:'🐟',v:1,jelly:false,eel:false}],
+            [{e:'🐡',v:3,jelly:false,eel:false},{e:'🪼',v:0,jelly:true,eel:false}],
+            [{e:'🪼',v:0,jelly:true,eel:false},{e:'🐠',v:6,jelly:false,eel:false}],
+            [{e:'🪼',v:0,jelly:true,eel:false},{e:'🐙',v:9,jelly:false,eel:false},{e:'🐍',v:0,jelly:false,eel:true}],
+            [{e:'🌙',v:12,jelly:false,eel:false},{e:'🐍',v:0,jelly:false,eel:true}],
+            [{e:'🌙',v:12,jelly:false,eel:false},{e:'💎',v:40,jelly:false,eel:false,pearl:true}]
+          ];
+          var rr=rt[rz][Math.floor(Math.random()*rt[rz].length)];
+          s.creatures.push({e:rr.e,v:rr.v,x:0.12+Math.random()*0.76,d:rg,
+            jelly:rr.jelly,eel:rr.eel,pearl:rr.pearl||false,vx:rr.eel?(Math.random()<0.5?-25:25):0});
+        }
         if(s.bag>0){ s.score+=s.bag;totalScore+=s.bag;
-          fxHeavy(W/2,H*0.3,'落袋为安 +'+s.bag,'#ffd166'); }
-        s.trip++;s.bag=0;s.o2=100;s.mode='wait';s.creatures=[];
-        if(s.trip>3){ s.done=true;s.dolT=t;return; }
-        hud(true,null,'💰 '+s.score+' / 60 · 第 '+s.trip+'/3 趟 · 按住下潜');
+          fxHeavy(W/2,H*0.3,'落袋为安 +'+s.bag,'#ffd166');
+          s.trip++;s.bag=0;s.o2=100;s.mode='wait';
+          if(s.trip>3){ s.done=true;s.dolT=t;return; }
+        } else {
+          s.o2=Math.min(100,s.o2+30);s.mode='wait';
+          fxFloat(W/2,H*0.3,'空手回船 · 氧气补满','#7ec8e3');
+        }
+        hud(true,null,'💰 '+s.score+' / 90 · 第 '+s.trip+'/3 趟 · 按住下潜');
       }
     }
     if(s.depth>280)s.depth=280;
@@ -781,7 +801,7 @@ GAME[2]=function(){return{
     }
     if(!s.done&&(s.score>=60||s.pearl)){ s.done=true;s.dolT=t;
       fxHeavy(W/2,H*0.3,'今日配额达成！','#ffd166'); }
-    hud(true,null,'💰 '+s.score+'/60 · O₂ '+Math.max(0,Math.floor(s.o2))+'% · 包 '+s.bag);},
+    hud(true,null,'💰 '+s.score+'/90 · O₂ '+Math.max(0,Math.floor(s.o2))+'% · 包 '+s.bag);},
   draw:function(t,s){
     var dp=Math.min(1,s.depth/280);
     var g=X.createLinearGradient(0,0,0,H);

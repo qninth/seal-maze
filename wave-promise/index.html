@@ -900,6 +900,9 @@ GAME[1]=function(){return{
     /* 今日鱼市行情 */
     s.market=todayMarket();
     for(var wi=0;wi<4;wi++)SUIKA_TYPES[wi].w=s.market.w[wi];
+    /* 难度叠加权重 */
+    var dw=diffCfg().d1w;
+    for(var wi2=0;wi2<4;wi2++)SUIKA_TYPES[wi2].w=Math.round(SUIKA_TYPES[wi2].w*dw[wi2]/30);
     starCount=0;state.goalLabel='🐟 0 / 150 分';hud(true,null,state.goalLabel);
     dlg({w:'note',t:'老板娘：「海获叠得越漂亮，工钱越多！」按住拖动选位置，松手落下。同款相碰会合成大件——目标是合成海龟或珍珠贝！堆过警戒线可就砸了。'});
     fxFloat(W/2,H*0.32,'📢 今日鱼市：'+s.market.name,'#ffd166');},
@@ -910,8 +913,8 @@ GAME[1]=function(){return{
     if((s.comboN||0)>=3&&t-(s.comboBannerT||0)>2){ s.comboBannerT=t;
       fxFloat(W/2,H*0.16,'×'+s.comboN+' 连锁！','#ffd166'); }
     var el=(t-s.startT)/1000;
-    if(el>40)s.unlockMax=Math.max(s.unlockMax,2);
-    if(el>100)s.unlockMax=Math.max(s.unlockMax,3);
+    if(el>diffCfg().d1unlock[0])s.unlockMax=Math.max(s.unlockMax,2);
+    if(el>diffCfg().d1unlock[1])s.unlockMax=Math.max(s.unlockMax,3);
     if(touchDown&&s.cool<=0){ s.curX=touchX; s.holding=true; }
     if(!touchDown&&s.holding&&s.cool<=0){
       /* 松手落下 */
@@ -941,8 +944,9 @@ GAME[1]=function(){return{
           if(a.type===b.type&&a.type<6){
             a.dead=true;b.dead=true;
             var nt=a.type+1, T=SUIKA_TYPES[nt];
-            s.items.push({type:nt,x:(a.x+b.x)/2,y:(a.y+b.y)/2,r:T.r,vx:0,vy:-60,dead:false});
-            s.comboN=(s.comboN||0)+1;s.comboT=3.0;
+            var ny0=Math.max((a.y+b.y)/2, H*0.3);   /* 合成不出筐顶 */
+            s.items.push({type:nt,x:(a.x+b.x)/2,y:ny0,r:T.r,vx:0,vy:-60,dead:false});
+            s.comboN=(s.comboN||0)+1;s.comboT=diffCfg().d1combo;
             var mult=1+0.25*(s.comboN-1);
             var pts=Math.round(T.score*mult);s.score+=pts;addStar(0);totalScore+=pts;
             hud(true,null,'🐟 '+s.score+' / 150 分');
@@ -953,13 +957,20 @@ GAME[1]=function(){return{
               fxFloat(mx,my-24,T.n+' +'+pts,'#76C99B'); }
             continue;
           }
-          var push=(min-dist)/2,nx=dx/dist,ny=dy/dist;
+          /* 推挤：用原始像素单位向量（归一化 dist 会导致 dist→0 时方向爆炸） */
+          var hyp=Math.hypot(dx,dy)||0.01;
+          var nx=dx/hyp, ny=dy/hyp;
+          var push=(min-dist)*Math.min(arx,ary)*0.5;   /* 归一化差 × 平均半径 = 像素重叠量 */
+          push=Math.min(push,12);                       /* 单帧最多推开 12px，防弹飞 */
           a.x-=nx*push;a.y-=ny*push;b.x+=nx*push;b.y+=ny*push;
           var rvx=b.vx-a.vx, rvy=b.vy-a.vy;
           var dot=rvx*nx+rvy*ny;
           if(dot<0){ var imp=dot*0.4;
             a.vx+=nx*imp;a.vy+=ny*imp;
             b.vx-=nx*imp;b.vy-=ny*imp; }
+          /* 保险丝：任何物品逃出屏幕范围立即拉回筐内 */
+          if(a.y<-100||a.y>H+100){ a.y=H*0.5;a.vy=0;a.vx=0; }
+          if(b.y<-100||b.y>H+100){ b.y=H*0.5;b.vy=0;b.vx=0; }
         }
       }
     }
@@ -1096,10 +1107,11 @@ GAME[2]=function(){return{
       s.o2-=0.5*dt;
     } else if(s.mode==='dive'){
       var spd=s.depth<150?55:32;   /* 深水减速：看得清、躲得开 */
-      s.depth+=spd*dt; s.o2-=(1+7*(s.depth/280))*dt*(s.depth<150?1:1.15)/(diffCfg().d2O2)/(s.cardO2?1.54:1);
+      var o2bot=diffCfg().d2o2bot;
+      s.depth+=spd*dt; s.o2-=(1+o2bot*(s.depth/280))*dt*(s.depth<150?1:1.15)/(diffCfg().d2O2)/(s.cardO2?1.54:1);
       if(!touchDown)s.mode='rise';
     } else {
-      s.depth-=68*dt; s.o2-=2.5*dt;
+      s.depth-=diffCfg().d2rise*dt; s.o2-=2.5*dt;
       if(s.depth<=0){
         s.depth=0;
         /* 每趟重新铺满全图（刷新鱼群，保持黄金矿工式可规划） */
@@ -1149,7 +1161,7 @@ GAME[2]=function(){return{
       /* 判定收紧：水母=触手正后方 14m/0.05；鳗=嘴部 16m/0.065（不再凭空被蛰） */
       var jRng=(c.jelly?{d:14,x:0.055}:(c.eel?{d:16,x:0.065}:{d:28,x:0.09}));
       if(Math.abs(pd)<jRng.d&&Math.abs(px2)<jRng.x){
-        if(c.jelly){ s.hurtT=1.2;s.o2-=8;c.dead=true;
+        if(c.jelly){ s.hurtT=1.2;s.o2-=diffCfg().d2jelly;c.dead=true;
           fxArcLine(s.px*W,H*0.5,'#F72585');
           fxSparkle(s.px*W,H*0.5,4);
           fxFloat(s.px*W,H*0.42,'⚡ 被蛰了！','#FFD6FF');
@@ -1180,8 +1192,8 @@ GAME[2]=function(){return{
       if(s.netCd<=0){
         var best=null,bv=-1;
         for(var n2=0;n2<s.creatures.length;n2++){ var cc=s.creatures[n2];
-          var nw=s.cardNet?0.24:0.15;
-          if(!cc.jelly&&Math.abs(cc.d-s.depth)<60&&Math.abs(cc.x-s.px)<nw&&cc.v>bv){ bv=cc.v;best=cc; } }
+          var nw=s.cardNet?0.10:0.062;   /* 网宽=撒网圈视觉半径 */
+          if(!cc.jelly&&Math.abs(cc.d-s.depth)<22&&Math.abs(cc.x-s.px)<nw&&cc.v>bv){ bv=cc.v;best=cc; } }
         if(best){ var gain=best.v;
           if(s.depth>150&&s.o2<25){ gain*=2;totalScore+=gain;
             fxHeavy(s.px*W,H/2-30,'险中取胜！+'+gain,'#ffd166'); }
@@ -1279,7 +1291,7 @@ GAME[3]=function(){return{
     dlg({w:'note',t:'老板：「帮我打椰子招揽客人，赢满 8 波，摊位分你一成！」按住拖动瞄准（虚线是弹道），松手发射。方块每轮下压一格——压到沙滩就完了！'});},
   spawnWave:function(s){
     /* 更多砖（6-10 块）但随机留空列 + 圆形障碍增加随机反弹 */
-    var n=5+Math.min(5,s.wave);
+    var n=diffCfg().d3brick(s.wave);
     var used={};
     for(var i=0;i<n;i++){
       var col=Math.floor(Math.random()*5);
@@ -1287,13 +1299,13 @@ GAME[3]=function(){return{
       while(used[col]&&tries<8){ col=Math.floor(Math.random()*5);tries++; }
       if(used[col])continue;  /* 保证空隙：同波不重复列 */
       used[col]=1;
-      var hp=s.wave+Math.floor(s.wave/2)+(Math.random()<0.3?1:0);
+      var hp=diffCfg().d3hp(s.wave)+(Math.random()<0.3?1:0);
       var type='normal';
       if(s.wave%3===0&&i===0)type='coco';
-      else if(Math.random()<0.12)type='shell';
-      else if(Math.random()<0.10)type='bottle';
+      else if(Math.random()<(diffCfg().d3special+0.02))type='shell';
+      else if(Math.random()<diffCfg().d3special)type='bottle';
       if(type==='shell')hp*=2;
-      if(s.wave>=4&&Math.random()<0.10)type='hourglass';
+      if(s.wave>=4&&Math.random()<diffCfg().d3special)type='hourglass';
       s.blocks.push({col:col,row:(s.wave===1?0:-1)-Math.floor(i/3),hp:hp,type:type,x:0,y:0,w:0,h:0,dead:false});
     }
     /* 圆形障碍（海星浮标）：2-3 个，圆碰撞产生不可预测反弹 */
@@ -1335,8 +1347,9 @@ GAME[3]=function(){return{
       /* Ballz 式瞄准：手指相对屏幕中心的水平偏移决定角度（拖左射右），±60° */
       var dx=(s.aimX-0.5)*2;               /* -1..1 */
       var baseAng=-Math.PI/2 + dx*1.05;    /* 拖左(dx<0)→角度变大→射向右上；拖右→射向左上 */
-      if(baseAng>-Math.PI*0.32)baseAng=-Math.PI*0.32;
-      if(baseAng<-Math.PI*0.68)baseAng=-Math.PI*0.68;
+      var aimLim=diffCfg().d3aim*Math.PI/180;
+      if(baseAng>-Math.PI/2+aimLim)baseAng=-Math.PI/2+aimLim;
+      if(baseAng<-Math.PI/2-aimLim)baseAng=-Math.PI/2-aimLim;
       s.lastAimAng=baseAng;s.recoilT=0.15;
       if(s.cardBalls){s.balls+=s.cardBalls;s.cardBalls=0;}  /* 广角瞄准 */
       for(var b=0;b<s.balls;b++){
@@ -1349,7 +1362,7 @@ GAME[3]=function(){return{
     }
     for(var i=s.flying.length-1;i>=0;i--){ var bl=s.flying[i];
       bl.airT=(bl.airT||0)+dt;
-      var maxAir=(t<(s.graceUntil||0))?25:10;   /* 基础10s / 沙漏25s */
+      var maxAir=(t<(s.graceUntil||0))?diffCfg().d3dead+15:diffCfg().d3dead;   /* 死球回收随难度 */
       if(bl.airT>maxAir){ /* 死球强制回收（防循环反弹） */
         bl.dead=true;fxFloat(bl.x,Math.min(H-40,bl.y),'弹珠回收','#7ec8e3'); }
       bl.trail.push({x:bl.x,y:bl.y});
@@ -1536,8 +1549,9 @@ GAME[3]=function(){return{
     if(s.aiming&&s.remain===0){
       var dx=(s.aimX-0.5)*2;
       var baseAng=-Math.PI/2 + dx*1.05;
-      if(baseAng>-Math.PI*0.32)baseAng=-Math.PI*0.32;
-      if(baseAng<-Math.PI*0.68)baseAng=-Math.PI*0.68;
+      var aimLim=diffCfg().d3aim*Math.PI/180;
+      if(baseAng>-Math.PI/2+aimLim)baseAng=-Math.PI/2+aimLim;
+      if(baseAng<-Math.PI/2-aimLim)baseAng=-Math.PI/2-aimLim;
       X.strokeStyle='rgba(255,209,102,.7)';X.lineWidth=2;X.setLineDash([5,5]);
       X.beginPath();X.moveTo(W/2,H-56);
       var dx=Math.cos(baseAng)*8,dy=Math.sin(baseAng)*8,lx=W/2,ly=H-56;
@@ -1958,9 +1972,22 @@ function showCards(){
 var difficulty='normal';
 function diffCfg(){
   var t={
-    easy:{d1Line:0.15,d2O2:1.25,d2Goal:70,d3Row:12,name:'轻松'},
-    normal:{d1Line:0.22,d2O2:1.0,d2Goal:90,d3Row:10,name:'标准'},
-    hard:{d1Line:0.28,d2O2:0.85,d2Goal:110,d3Row:9,name:'挑战'}
+    /* 四维：局内压力 / 失误代价 / 资源稀缺 / 后期增长 */
+    easy:{d1Line:0.15,d2O2:1.25,d2Goal:70,d3Row:12,name:'轻松',
+      d1w:[38,32,22,8],  d1unlock:[30,80],  d1burst:3.0, d1combo:4.5,
+      d2o2bot:5,  d2jelly:6,  d2rise:75,
+      d3brick:function(w){return 4+Math.min(4,w);}, d3hp:function(w){return Math.ceil(w*0.8)+1;},
+      d3dead:8,  d3special:0.14, d3aim:68},
+    normal:{d1Line:0.22,d2O2:1.0,d2Goal:90,d3Row:10,name:'标准',
+      d1w:[34,31,23,7],  d1unlock:[40,100], d1burst:1.8, d1combo:3.0,
+      d2o2bot:7,  d2jelly:8,  d2rise:68,
+      d3brick:function(w){return 5+Math.min(6,w);}, d3hp:function(w){return w+Math.floor(w/2);},
+      d3dead:10, d3special:0.10, d3aim:68},
+    hard:{d1Line:0.28,d2O2:0.85,d2Goal:110,d3Row:9,name:'挑战',
+      d1w:[40,28,20,12], d1unlock:[55,130], d1burst:0.8, d1combo:2.2,
+      d2o2bot:9,  d2jelly:12, d2rise:60,
+      d3brick:function(w){return 5+Math.min(8,w);}, d3hp:function(w){return w+Math.floor(w*0.8);},
+      d3dead:14, d3special:0.06, d3aim:55}
   };
   return t[difficulty]||t.normal;
 }

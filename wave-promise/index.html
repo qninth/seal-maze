@@ -874,7 +874,9 @@ GAME[3]=function(){return{
     s.bumpers=[];
     var nb=2+Math.floor(Math.random()*2);
     for(var b2=0;b2<nb;b2++){
-      s.bumpers.push({x:W*(0.2+Math.random()*0.6),y:H*0.28+Math.random()*H*0.3,r:22,phase:Math.random()*7});
+      var mv=s.wave>=3&&b2===0;
+      s.bumpers.push({x:W*(0.2+Math.random()*0.6),y:H*0.28+Math.random()*H*0.3,r:22,
+        phase:Math.random()*7,mv:mv?0.06:0,dir:1});
     }
     this.layout(s);},
   layout:function(s){
@@ -883,6 +885,8 @@ GAME[3]=function(){return{
       b.x=b.col*cw;b.y=60+b.row*s.cellH;b.w=cw-4;b.h=s.cellH-4; }},
   update:function(dt,t,s){
     if(s.done&&t-s.dolT>1.2){ finishWin();return; }
+    for(var bmi=0;bmi<(s.bumpers||[]).length;bmi++){ var bm=s.bumpers[bmi];
+      if(bm.mv){ bm.x+=bm.mv*bm.dir; if(bm.x<W*0.15||bm.x>W*0.85)bm.dir*=-1; } }
     if(s.betweenT>0){ s.betweenT-=dt;
       if(s.betweenT<=0){
         s.wave++;starCount=s.wave;totalScore+=s.wave*10;
@@ -901,11 +905,12 @@ GAME[3]=function(){return{
       /* Ballz 式瞄准：手指相对屏幕中心的水平偏移决定角度（拖左射右），±60° */
       var dx=(s.aimX-0.5)*2;               /* -1..1 */
       var baseAng=-Math.PI/2 + dx*1.05;    /* 拖左(dx<0)→角度变大→射向右上；拖右→射向左上 */
-      if(baseAng>-Math.PI/6)baseAng=-Math.PI/6;
-      if(baseAng<-Math.PI*5/6)baseAng=-Math.PI*5/6;
+      if(baseAng>-Math.PI*0.32)baseAng=-Math.PI*0.32;
+      if(baseAng<-Math.PI*0.68)baseAng=-Math.PI*0.68;
+      s.lastAimAng=baseAng;s.recoilT=0.15;
       for(var b=0;b<s.balls;b++){
         var a2=baseAng+((b-(s.balls-1)/2))*0.05;
-        s.flying.push({x:W/2,y:H-60,vx:Math.cos(a2)*390,vy:Math.sin(a2)*390,
+        s.flying.push({x:W/2,y:H-60,vx:Math.cos(a2)*430,vy:Math.sin(a2)*430,
           trail:[],dead:false,launchT:t});
         s.remain++;
       }
@@ -913,7 +918,7 @@ GAME[3]=function(){return{
     }
     for(var i=s.flying.length-1;i>=0;i--){ var bl=s.flying[i];
       bl.airT=(bl.airT||0)+dt;
-      var maxAir=(t<(s.graceUntil||0))?12:6;   /* 沙漏 buff：12s */
+      var maxAir=(t<(s.graceUntil||0))?25:10;   /* 基础10s / 沙漏25s */
       if(bl.airT>maxAir){ /* 死球强制回收（防循环反弹） */
         bl.dead=true;fxFloat(bl.x,Math.min(H-40,bl.y),'弹珠回收','#7ec8e3'); }
       bl.trail.push({x:bl.x,y:bl.y});
@@ -937,6 +942,11 @@ GAME[3]=function(){return{
             else { bl.y=bk.y+bk.h+1; bl.vy=Math.abs(bl.vy); }
             bk.hp--;s.roundHitN=(s.roundHitN||0)+1;
             fxLight(bl.x,bl.y,'#ffd166');
+            if(bk.type==='diamond'){
+              var wasVX=Math.abs(bl.vx),wasVY=Math.abs(bl.vy);
+              var sgnX=bl.vx>0?1:-1, sgnY=bl.vy>0?1:-1;
+              bl.vx=sgnY*wasVY; bl.vy=sgnX*wasVX;
+            }
             if(bk.hp<=0){ bk.dead=true;
               var cx2=bk.x+bk.w/2,cy2=bk.y+bk.h/2;
               if(bk.type==='coco'){ s.balls=Math.min(s.maxBalls+4,s.balls+2);
@@ -947,7 +957,7 @@ GAME[3]=function(){return{
                 for(var m=0;m<s.blocks.length;m++){ if(s.blocks[m].col===bk.col)s.blocks[m].dead=true; }
                 fxHeavy(cx2,cy2,'漂流瓶 清列！','#ffd166'); }
               else if(bk.type==='hourglass'){
-                s.graceUntil=t+30;  /* 30 秒内死球回收延长到 12s */
+                s.graceUntil=t+25;  /* 25 秒内回收缓冲 25s */
                 fxMedium(cx2,cy2,'⏳ 慢速回收 30s','#7ec8e3'); }
               else fxBurst(cx2,cy2,5,{color:'#ffd166'});
             }
@@ -1006,6 +1016,7 @@ GAME[3]=function(){return{
           $('failText').textContent=playerName()+' 撑到第 '+s.wave+' 波'; }
         show('ovFail');return; }
       s.betweenT=s.roundHitN?0.7:0.25;  /* 空轮快速过 */
+      if(s.recoilT>0)s.recoilT-=dt;
       s.roundHitN=0;
     }},
   draw:function(t,s){
@@ -1046,14 +1057,24 @@ GAME[3]=function(){return{
       X.beginPath();X.arc(fb.x,fb.y,6,0,7);X.fill();
       X.strokeStyle='rgba(255,255,255,.6)';X.lineWidth=1;
       X.beginPath();X.arc(fb.x,fb.y,6,0,7);X.stroke(); }
-    /* 炮台 */
-    X.font='26px serif';X.textAlign='center';
-    X.fillText('🔴',W/2,H-40);
+    /* 炮台：小白角色，随瞄准旋转，发射后坐 */
+    var cannonRecoil=(s.recoilT||0)>0?(s.recoilT/0.15)*8:0;
+    var aimAng=(s.lastAimAng!==undefined)?s.lastAimAng:-Math.PI/2;
+    X.save();
+    X.translate(W/2,H-52-cannonRecoil);
+    X.rotate(aimAng+Math.PI/2);
+    if(ASSET.roleBai&&ASSET.roleBai.indexOf('__')!==0){
+      var ci=ROLE_IMG['roleBai']||(function(){var im=new Image();im.src=ASSET.roleBai;ROLE_IMG['roleBai']=im;return im;})();
+      if(ci&&ci.complete&&ci.naturalWidth>0){
+        X.drawImage(ci,-22,-22,44,44);
+      } else { X.font='30px serif';X.textAlign='center';X.fillText('🐶',0,10); }
+    } else { X.font='30px serif';X.textAlign='center';X.fillText('🐶',0,10); }
+    X.restore();
     if(s.aiming&&s.remain===0){
       var dx=(s.aimX-0.5)*2;
       var baseAng=-Math.PI/2 + dx*1.05;
-      if(baseAng>-Math.PI/6)baseAng=-Math.PI/6;
-      if(baseAng<-Math.PI*5/6)baseAng=-Math.PI*5/6;
+      if(baseAng>-Math.PI*0.32)baseAng=-Math.PI*0.32;
+      if(baseAng<-Math.PI*0.68)baseAng=-Math.PI*0.68;
       X.strokeStyle='rgba(255,209,102,.7)';X.lineWidth=2;X.setLineDash([5,5]);
       X.beginPath();X.moveTo(W/2,H-56);
       var dx=Math.cos(baseAng)*8,dy=Math.sin(baseAng)*8,lx=W/2,ly=H-56;

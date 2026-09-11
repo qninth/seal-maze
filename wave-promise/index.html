@@ -29,8 +29,9 @@
     display:none;justify-content:space-between;align-items:center;z-index:10;pointer-events:none;}
   #hud .tag{font-size:13px;font-weight:700;color:#fff;background:rgba(13,33,55,.55);
     padding:5px 12px;border-radius:999px;backdrop-filter:blur(4px);}
-  #hearts{font-size:15px;letter-spacing:2px;}
-  #goal{font-size:12px;opacity:.9;background:rgba(13,33,55,.55);padding:5px 12px;border-radius:999px;}
+  #hearts{font-size:14px;letter-spacing:1px;white-space:nowrap;flex:none;}
+  #hud .tag{flex:none;max-width:46vw;overflow:hidden;text-overflow:ellipsis;}
+  #goal{font-size:12px;opacity:.9;background:rgba(13,33,55,.55);padding:5px 12px;border-radius:999px;white-space:nowrap;flex:none;max-width:52vw;overflow:hidden;text-overflow:ellipsis;}
   #dlg{position:fixed;left:0;right:0;bottom:0;z-index:15;display:none;padding:10px 14px calc(14px + env(safe-area-inset-bottom));}
   #dlgBox{max-width:520px;margin:0 auto;}
   /* 聊天气泡 */
@@ -145,7 +146,7 @@
   padding:7px 16px;border-radius:999px;font-size:13px;white-space:nowrap;pointer-events:none;"></div>
 
 <!-- 纯游戏退出 -->
-<button class="btn ghost" id="btnQuitGame" style="display:none;position:fixed;top:calc(env(safe-area-inset-top, 0px) + 8px);right:10px;z-index:50;padding:6px 14px;font-size:13px;background:rgba(13,33,55,.5);color:#fff;">✕ 退出</button>
+<button class="btn ghost" id="btnQuitGame" style="display:none;position:fixed;top:calc(env(safe-area-inset-top, 0px) + 8px);right:10px;z-index:55;padding:8px 18px;font-size:14px;background:rgba(13,33,55,.75);color:#fff;border:1px solid rgba(255,255,255,.4);">✕ 退出</button>
 
 <!-- 失败 -->
 <div class="ov hidden" id="ovFail">
@@ -310,6 +311,8 @@ var touchSide=0,touchX=0.5,touchDown=false,tapPulse=0;
 function gameActive(){ return running&&!paused&&$('dlg').style.display!=='block'; }
 function sideFrom(x){ return x<W/2?-1:1; }
 function onStart(e){
+  /* UI 按钮不拦截：让 click 正常触发 */
+  if(e.target&&e.target.closest&&e.target.closest('button'))return;
   if(!cur)return;
   /* 游戏内小对话（dlg）：点按关闭——不依赖 running 状态（retry 后 running=false 也要能关） */
   var d=$('dlg');

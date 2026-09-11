@@ -215,6 +215,7 @@ setTimeout(function(){
     },true);
   }
   if(ASSET.uiFrame&&ASSET.uiFrame.indexOf('__')!==0)$('coverWaveTop').src=ASSET.uiFrame;
+  if(ASSET.cover&&ASSET.cover.indexOf('__')!==0)$('coverPic').src=ASSET.cover;
 },100);
 
 var $=function(id){return document.getElementById(id);};

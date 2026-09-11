@@ -134,6 +134,10 @@
   <button class="btn ghost" id="btnArcade" style="margin-top:10px;">🎮 纯游戏模式 · 选关试玩</button>
 </div>
 
+<!-- 倒计时 -->
+<div id="countdown" style="display:none;position:fixed;inset:0;z-index:60;align-items:center;justify-content:center;
+  background:rgba(13,33,55,.35);color:#ffd166;font-size:88px;font-weight:900;text-shadow:0 4px 24px rgba(0,0,0,.5);pointer-events:none;"></div>
+
 <!-- D1 near-miss toast -->
 <div id="d1hint" style="display:none;position:fixed;top:calc(env(safe-area-inset-top,0px) + 46px);left:50%;transform:translateX(-50%);z-index:12;
   background:rgba(13,33,55,.85);color:#7ec8e3;border:1px solid rgba(126,200,227,.5);
@@ -283,11 +287,13 @@ var touchSide=0,touchX=0.5,touchDown=false,tapPulse=0;
 function gameActive(){ return running&&!paused&&$('dlg').style.display!=='block'; }
 function sideFrom(x){ return x<W/2?-1:1; }
 function onStart(e){
-  if(running===false||!cur)return;
-  /* 游戏内小对话（dlg）：点按关闭——不依赖 gameActive */
+  if(!cur)return;
+  /* 游戏内小对话（dlg）：点按关闭——不依赖 running 状态（retry 后 running=false 也要能关） */
   var d=$('dlg');
   if(d.style.display==='block'){
     d.style.display='none';
+    if(state._pendingStart){ var ps=state._pendingStart; state._pendingStart=null;
+      startCountdown(function(){ running=true;paused=false;lastT=performance.now();ps(); }); }
     if(state.onAdvance){var f=state.onAdvance;state.onAdvance=null;}
     if(e.cancelable)e.preventDefault(); return;
   }
@@ -322,6 +328,19 @@ function dlg(say){
   var m = say.w==='note' ? say : (say.w ? say : {w:'n',t:say.text||say.t||''});
   box.appendChild(msgEl(m));
   d.style.display='block';
+}
+/* 关卡开始倒计时：3-2-1-GO 覆盖层 */
+var countdownActive=false;
+function startCountdown(cb){
+  countdownActive=true;
+  var cd=$('countdown');cd.style.display='flex';
+  var n=3;
+  var step=function(){
+    if(n>0){ cd.textContent=n; n--; setTimeout(step,650); }
+    else { cd.textContent='GO!'; setTimeout(function(){
+      cd.style.display='none';countdownActive=false;cb(); },450); }
+  };
+  step();
 }
 
 /* ================= Juice 引擎（三档反馈协议） ================= */
@@ -1204,7 +1223,8 @@ function finishWin(){
     hearts=Math.min(3,hearts+1);
     hideAll();hud(true,'♾️ 无尽 · '+DAYS[day].tag,DAYS[day].how);
     showChat([{w:'n',t:'（浪王一挥手：换岗！本轮已攒 '+totalScore+' 分）'}],{goLabel:'继续 ▸',onDone:function(){
-      hideAll();cur.init(state);running=true;paused=false;
+      hideAll();cur.init(state);paused=false;
+      state._pendingStart=function(){ startLoop(); };
       startLoop();
     }});
     return; }
@@ -1230,12 +1250,13 @@ function startEnding(){
   }});
 }
 $('btnRetry').addEventListener('click',function(){
-  hearts=3;paused=false;running=true;
+  hearts=3;paused=false;
   failCount++;
   $('btnRetry').textContent='再试一次';
   cur.init(state);
   hideAll();
   hud(true,DAYS[day].tag,DAYS[day].how);
+  state._pendingStart=function(){ startLoop(); };
   startLoop();
 });
 $('btnSkip').addEventListener('click',function(){
@@ -1268,8 +1289,9 @@ $('btnResume').addEventListener('click',function(){
   hearts=3;starCount=0;cur=GAME[day]();state=cur;
   hideAll();hud(true,DAYS[day].tag,DAYS[day].how);
   showChat([{w:'n',t:'（欢迎回来，'+playerName()+'！继续 '+DAYS[day].title+'）'}],{goLabel:'继续 ▸',onDone:function(){
-    hideAll();cur.init(state);running=true;paused=false;
+    hideAll();cur.init(state);paused=false;
     if(arcade||endless)$('btnQuitGame').style.display='block';
+    state._pendingStart=function(){ startLoop(); };
     startLoop();
   }});
 });
@@ -1312,7 +1334,8 @@ $('btnEndless').addEventListener('click',function(){
   hideAll();hud(true,'♾️ 无尽 · '+DAYS[day].tag,DAYS[day].how);
   $('btnQuitGame').style.display='block';
   showChat([{w:'n',t:'（无尽模式：三关轮换，看看一轮能攒多少分！）'}],{goLabel:'开始 ▸',onDone:function(){
-    hideAll();cur.init(state);running=true;paused=false;
+    hideAll();cur.init(state);paused=false;
+    state._pendingStart=function(){ startLoop(); };
     startLoop();
   }});
 });
@@ -1323,7 +1346,8 @@ $('btnEndless').addEventListener('click',function(){
     hideAll();hud(true,DAYS[day].tag,DAYS[day].how);
     $('btnQuitGame').style.display='block';
     showChat([{w:'n',t:'（纯游戏模式 · '+DAYS[day].title+'）'}],{goLabel:'开始 ▸',onDone:function(){
-      hideAll();cur.init(state);running=true;paused=false;
+      hideAll();cur.init(state);paused=false;
+      state._pendingStart=function(){ startLoop(); };
       startLoop();
     }});
   });
@@ -1341,7 +1365,7 @@ function loop(now){
   var t=now;
   var live=fxUpdate(dt);
   if(cur){
-    var frozen=paused||$('dlg').style.display==='block';
+    var frozen=paused||$('dlg').style.display==='block'||countdownActive;
     if(frozen){ cur.draw(t,state); }
     else { if(live)cur.update(dt,t,state); if(running)cur.draw(t,state); }
   }

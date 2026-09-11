@@ -1321,6 +1321,7 @@ GAME[3]=function(){return{
     s.wave=1;s.balls=4;s.maxBalls=12;s.fi=0;s.done=false;s.dolT=0;
     s.aimX=0.5;s.aiming=false;s.flying=[];s.remain=0;
     s.blocks=[];s.bumpers=[];s.cellH=H/14;s.betweenT=0;
+    s.lineY=60+10*(H/14);   /* 沙滩线像素位置：判定=绘制，同一来源 */
     this.spawnWave(s);
     starCount=0;state.goalLabel=endless?'♾️ 无尽 · 第 1 波':'🎯 第 1 / 8 波';hud(true,null,state.goalLabel);
     dlg({w:'note',t:'老板：「帮我打椰子招揽客人，赢满 8 波，摊位分你一成！」按住拖动瞄准（虚线是弹道），松手发射。方块每轮下压一格——压到沙滩就完了！'});},
@@ -1509,12 +1510,14 @@ GAME[3]=function(){return{
       for(var d2=0;d2<s.blocks.length;d2++){ s.blocks[d2].row++; }
       s.blocks=s.blocks.filter(function(b){return b.row<13;});
       this.layout(s);
+      /* 沙滩判定：砖块【视觉底边】压过 s.lineY + 6px 才算（线画哪判哪） */
       var hitFloor=false,dangerRow=false;
-      for(var d3=0;d3<s.blocks.length;d3++){
-        if(s.blocks[d3].row>=diffCfg().d3Row)hitFloor=true;
-        if(s.blocks[d3].row>=diffCfg().d3Row-2)dangerRow=true; }
+      for(var d3=0;d3<s.blocks.length;d3++){ var bb=s.blocks[d3];
+        if(bb.dead)continue;
+        if(bb.y+bb.h>=s.lineY+6)hitFloor=true;
+        else if(bb.y+bb.h>=s.lineY-s.cellH*0.8)dangerRow=true; }
       if(dangerRow&&!hitFloor&&s.wave<8){
-        fxFloat(W/2,60+diffCfg().d3Row*s.cellH-30,'⚠ 快到沙滩了！优先打低处的方块','#ff9a5c'); }
+        fxFloat(W/2,s.lineY-34,'⚠ 快到沙滩了！优先打低处的方块','#ff9a5c'); }
       if(hitFloor){ running=false;hearts=3;
         if(endless){ recordScore('endless',totalScore); endless=false;
           $('failText').innerHTML='♾️ 无尽结束！本轮总分 <b style="color:#ffd166;">'+totalScore+'</b>（已记入无尽榜）';
@@ -1529,7 +1532,7 @@ GAME[3]=function(){return{
     var dt0=0.016;   /* 绘制帧步长（缓动系数用） */
     drawSea(t);
     X.fillStyle='rgba(255,175,115,.14)';X.fillRect(0,0,W,H);  /* 暖橙灯笼光 */
-    var lineY=60+10*s.cellH;
+    var lineY=s.lineY;
     X.strokeStyle='rgba(255,140,90,.7)';X.lineWidth=2;X.setLineDash([6,5]);
     X.beginPath();X.moveTo(0,lineY);X.lineTo(W,lineY);X.stroke();X.setLineDash([]);
     X.fillStyle='rgba(255,140,90,.25)';X.fillRect(0,lineY,W,H-lineY);

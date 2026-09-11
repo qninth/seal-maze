@@ -1101,9 +1101,9 @@ GAME[2]=function(){return{
         [{e:'🐟',v:1,jelly:false,eel:false}],
         [{e:'🐡',v:3,jelly:false,eel:false},{e:'🪼',v:0,jelly:true,eel:false}],
         [{e:'🪼',v:0,jelly:true,eel:false},{e:'🐠',v:6,jelly:false,eel:false}],
-        [{e:'🪼',v:0,jelly:true,eel:false},{e:'🐙',v:9,jelly:false,eel:false},{e:'🐍',v:0,jelly:false,eel:true}],
-        [{e:'🌙',v:12,jelly:false,eel:false},{e:'🐍',v:0,jelly:false,eel:true}],
-        [{e:'🌙',v:12,jelly:false,eel:false},{e:'💎',v:40,jelly:false,eel:false,pearl:true}]
+        [{e:'🪼',v:0,jelly:true,eel:false},{e:'🐙',v:7,jelly:false,eel:false},{e:'🐍',v:0,jelly:false,eel:true}],
+        [{e:'🐙',v:7,jelly:false,eel:false},{e:'🌙',v:12,jelly:false,eel:true}],
+        [{e:'🌙',v:14,jelly:false,eel:false},{e:'🌙',v:12,jelly:false,eel:false},{e:'💎',v:40,jelly:false,eel:false,pearl:true}]
       ];
       var row=tbl[zn];
       var pk=row[Math.floor(Math.random()*row.length)];
@@ -1221,7 +1221,7 @@ GAME[2]=function(){return{
           var nw=s.cardNet?0.10:0.062;   /* 网宽=撒网圈视觉半径 */
           if(!cc.jelly&&Math.abs(cc.d-s.depth)<22&&Math.abs(cc.x-s.px)<nw&&cc.v>bv){ bv=cc.v;best=cc; } }
         if(best){ var gain=best.v;
-          if(s.depth>150&&s.o2<25){ gain*=2;totalScore+=gain;
+          if(s.depth>150&&s.o2<20){ gain*=2;
             fxHeavy(s.px*W,H/2-30,'险中取胜！+'+gain,'#ffd166'); }
           else fxLight(s.px*W,H/2,'+'+gain,'#7ee08a');
           s.bag+=gain;s.netCd=1.3;best.dead=true;
@@ -1238,7 +1238,10 @@ GAME[2]=function(){return{
           $('failText').textContent=playerName()+' 的氧气成绩：'+s.score; }
         show('ovFail');return; }
       fxHeavy(W/2,H/2,'救援绳拉你上来了！','#ffd166');
-      s.score+=Math.floor(s.bag*0.7);s.bag=0;s.o2=100;s.depth=0;s.mode='dive';s.creatures=[];
+      var rescued=Math.floor(s.bag*0.4);   /* 耗氧被救：只保住 40%（贪深有代价） */
+      s.score+=rescued;
+      fxFloat(W/2,H/2+26,'掉落 '+Math.floor(s.bag*0.6)+' · 保住 '+rescued,'#F3A98F');
+      s.bag=0;s.o2=100;s.depth=0;s.mode='wait';s.creatures=[];
     }
     /* 胜利只看分数（珍珠落袋得 40 分），抓在手里不算 */
     if(!s.done&&s.score>=diffCfg().d2Goal){ s.done=true;s.dolT=t;
@@ -2059,18 +2062,18 @@ var difficulty='normal';
 function diffCfg(){
   var t={
     /* 四维：局内压力 / 失误代价 / 资源稀缺 / 后期增长 */
-    easy:{d1Line:0.13,d2O2:1.4,d2Goal:60,d3Row:13,name:'轻松',
+    easy:{d1Line:0.13,d2O2:1.4,d2Goal:85,d3Row:13,name:'轻松',
       d1w:[32,34,24,10], d1unlock:[25,70],  d1burst:3.5, d1combo:5.0,
       d2o2bot:4,  d2jelly:5,  d2rise:80,
       d3brick:function(w){return 4+Math.min(3,w);}, d3hp:function(w){return Math.ceil(w*0.7)+1;},
       d3dead:7,  d3special:0.18, d3aim:70,
       d1pushy:0.8, d2eelSpd:0.7, d3ballGain:1},
-    normal:{d1Line:0.22,d2O2:1.0,d2Goal:90,d3Row:10,name:'标准',
+    normal:{d1Line:0.22,d2O2:1.0,d2Goal:110,d3Row:10,name:'标准',
       d1w:[34,31,23,7],  d1unlock:[40,100], d1burst:1.8, d1combo:3.0,
       d2o2bot:7,  d2jelly:8,  d2rise:68,
       d3brick:function(w){return 5+Math.min(6,w);}, d3hp:function(w){return w+Math.floor(w/2);},
       d3dead:10, d3special:0.10, d3aim:68},
-    hard:{d1Line:0.32,d2O2:0.7,d2Goal:130,d3Row:8,name:'挑战',
+    hard:{d1Line:0.32,d2O2:0.7,d2Goal:160,d3Row:8,name:'挑战',
       d1w:[46,26,18,10], d1unlock:[70,150], d1burst:0.5, d1combo:1.8,
       d2o2bot:11, d2jelly:15, d2rise:52,
       d3brick:function(w){return 6+Math.min(9,w);}, d3hp:function(w){return w+Math.floor(w*1.1);},

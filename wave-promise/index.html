@@ -129,9 +129,15 @@
   <h1>浪的约定</h1>
   <p class="sub">晨市堆堆乐 · 深潜之约 · 夜市弹珠摊<br>一个关于海、打工与约定的狗狗夏日物语</p>
   <button class="btn" id="btnStart">🌊 开始旅程</button>
+  <button class="btn" id="btnResume" style="display:none;background:#7ec8e3;color:#0d2137;">▶️ 继续上次进度</button>
   <button class="btn ghost" id="btnStory" style="margin-top:10px;">📖 剧情模式 · 只看故事</button>
   <button class="btn ghost" id="btnArcade" style="margin-top:10px;">🎮 纯游戏模式 · 选关试玩</button>
 </div>
+
+<!-- D1 near-miss toast -->
+<div id="d1hint" style="display:none;position:fixed;top:calc(env(safe-area-inset-top,0px) + 46px);left:50%;transform:translateX(-50%);z-index:12;
+  background:rgba(13,33,55,.85);color:#7ec8e3;border:1px solid rgba(126,200,227,.5);
+  padding:7px 16px;border-radius:999px;font-size:13px;white-space:nowrap;pointer-events:none;"></div>
 
 <!-- 纯游戏退出 -->
 <button class="btn ghost" id="btnQuitGame" style="display:none;position:fixed;top:calc(env(safe-area-inset-top, 0px) + 8px);right:10px;z-index:50;padding:6px 14px;font-size:13px;background:rgba(13,33,55,.5);color:#fff;">✕ 退出</button>
@@ -143,6 +149,7 @@
   <div style="display:flex;gap:12px;align-items:center;justify-content:center;flex-wrap:wrap;">
     <button class="btn" id="btnRetry">再试一次</button>
     <button class="btn ghost" id="btnSkip">故事优先，跳过本关 ▸</button>
+    <button class="btn ghost" id="btnHome" style="margin-top:8px;">🏠 返回封面</button>
   </div>
 </div>
 
@@ -175,6 +182,15 @@ function resize(){ DPR=Math.min(window.devicePixelRatio||1,2);
   W=window.innerWidth;H=window.innerHeight;
   cv.width=W*DPR;cv.height=H*DPR;X.setTransform(DPR,0,0,DPR,0,0); }
 window.addEventListener('resize',resize);resize();
+/* 页面加载：有进度则显示继续按钮 */
+setTimeout(function(){
+  var p=loadProgress();
+  if(p&&p.day>=1&&p.day<=3){
+    var b=$('btnResume');b.style.display='block';
+    var mode=p.mode==='endless'?'♾️ 无尽':(p.mode==='arcade'?'🎮 纯游戏':'📖 剧情');
+    b.textContent='▶️ 继续 '+mode+' · Day'+p.day;
+  }
+},100);
 
 var $=function(id){return document.getElementById(id);};
 var GAME=[];
@@ -400,6 +416,18 @@ function storyBeat(screens){
 
 /* ================= Day1 桨板：惯性平衡 + 吸附收集（V7） ================= */
 /* ================= 玩法A（Day1）：晨市堆堆乐 · Suika 合成 ================= */
+var MARKET_TABLES=[
+  {name:'海螺日常',w:[40,30,20,10]},
+  {name:'螃蟹丰收',w:[30,25,35,10]},
+  {name:'蛤蜊荒年',w:[60,25,10,5]},
+  {name:'珍珠潮',w:[40,30,20,10],scoreX:1.5},
+  {name:'小黄鱼汛',w:[35,30,15,20]}
+];
+function todayMarket(){
+  var d=new Date();
+  var idx=parseInt(''+d.getFullYear()+(d.getMonth()+1)+d.getDate(),10)%MARKET_TABLES.length;
+  return MARKET_TABLES[idx];
+}
 var SUIKA_TYPES=[
   {n:'海螺',r:14,score:2,w:40,emoji:'🐚'},
   {n:'蛤蜊',r:20,score:4,w:30,emoji:'🦪'},
@@ -419,6 +447,18 @@ function pickType(unlockMax){
   return pool[0];
 }
 /* ================= 玩法A（Day1）：晨市堆堆乐 · Suika 合成 ================= */
+var MARKET_TABLES=[
+  {name:'海螺日常',w:[40,30,20,10]},
+  {name:'螃蟹丰收',w:[30,25,35,10]},
+  {name:'蛤蜊荒年',w:[60,25,10,5]},
+  {name:'珍珠潮',w:[40,30,20,10],scoreX:1.5},
+  {name:'小黄鱼汛',w:[35,30,15,20]}
+];
+function todayMarket(){
+  var d=new Date();
+  var idx=parseInt(''+d.getFullYear()+(d.getMonth()+1)+d.getDate(),10)%MARKET_TABLES.length;
+  return MARKET_TABLES[idx];
+}
 var SUIKA_TYPES=[
   {n:'海螺',r:14,score:2,w:40,emoji:'🐚'},
   {n:'蛤蜊',r:20,score:4,w:30,emoji:'🦪'},
@@ -445,11 +485,18 @@ GAME[1]=function(){return{
     s.unlockMax=1;s.startT=performance.now();
     s.basketL=W*0.05;s.basketR=W*0.95;s.lineY=H*0.22;
     s.overT=0;
+    /* 今日鱼市行情 */
+    s.market=todayMarket();
+    for(var wi=0;wi<4;wi++)SUIKA_TYPES[wi].w=s.market.w[wi];
     starCount=0;state.goalLabel='🐟 0 / 150 分';
-    dlg({w:'note',t:'老板娘：「海获叠得越漂亮，工钱越多！」按住拖动选位置，松手落下。同款相碰会合成大件——目标是合成海龟或珍珠贝！堆过警戒线可就砸了。'});},
+    dlg({w:'note',t:'老板娘：「海获叠得越漂亮，工钱越多！」按住拖动选位置，松手落下。同款相碰会合成大件——目标是合成海龟或珍珠贝！堆过警戒线可就砸了。'});
+    fxFloat(W/2,H*0.32,'📢 今日鱼市：'+s.market.name,'#ffd166');},
   update:function(dt,t,s){
     if(s.done&&t-s.dolT>1.2){ finishWin();return; }
     if(s.cool>0){ s.cool-=dt; }
+    if(s.comboT>0){ s.comboT-=dt; if(s.comboT<=0)s.comboN=0; }
+    if((s.comboN||0)>=3&&t-(s.comboBannerT||0)>2){ s.comboBannerT=t;
+      fxMedium(W/2,H*0.16,'×'+s.comboN+' 连锁！','#ffd166'); }
     var el=(t-s.startT)/1000;
     if(el>40)s.unlockMax=Math.max(s.unlockMax,2);
     if(el>100)s.unlockMax=Math.max(s.unlockMax,3);
@@ -478,7 +525,9 @@ GAME[1]=function(){return{
             a.dead=true;b.dead=true;
             var nt=a.type+1, T=SUIKA_TYPES[nt];
             s.items.push({type:nt,x:(a.x+b.x)/2,y:(a.y+b.y)/2,r:T.r,vx:0,vy:-60,dead:false});
-            var pts=T.score;s.score+=pts;addStar(0);totalScore+=pts;
+            s.comboN=(s.comboN||0)+1;s.comboT=3.0;
+            var mult=1+0.25*(s.comboN-1);
+            var pts=Math.round(T.score*mult);s.score+=pts;addStar(0);totalScore+=pts;
             hud(true,null,'🐟 '+s.score+' / 150 分');
             var mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
             if(nt>=5){ fxHeavy(mx,my,'合成 '+T.n+'！+'+pts,'#ffd166'); }
@@ -574,7 +623,7 @@ GAME[2]=function(){return{
     s.trips=3;s.trip=1;s.score=0;s.fi=0;s.done=false;s.dolT=0;
     s.depth=0;s.o2=100;s.bag=0;s.mode='dive';
     s.px=0.5;s.creatures=[];s.spawnT=0;s.netCd=0;s.pearl=false;s.pearlSpawned=false;
-    starCount=0;state.goalLabel='💰 0 / 30 分';
+    starCount=0;state.goalLabel='💰 0 / 60 分';
     dlg({w:'note',t:'老板：「听说 280 米下有枚「约定之珠」，能定一辈子。」按住下潜、松手上浮，回到水面鱼获就落袋！越深越值钱——但氧气会用完。快速点一下可以撒网。'});},
   update:function(dt,t,s){
     if(s.done&&t-s.dolT>1.2){ finishWin();return; }
@@ -595,13 +644,13 @@ GAME[2]=function(){return{
           fxHeavy(W/2,H*0.3,'落袋为安 +'+s.bag,'#ffd166'); }
         s.trip++;s.bag=0;s.o2=100;s.mode='wait';s.creatures=[];
         if(s.trip>3){ s.done=true;s.dolT=t;return; }
-        hud(true,null,'💰 '+s.score+' / 30 · 第 '+s.trip+'/3 趟 · 按住下潜');
+        hud(true,null,'💰 '+s.score+' / 60 · 第 '+s.trip+'/3 趟 · 按住下潜');
       }
     }
     if(s.depth>280)s.depth=280;
     s.spawnT-=dt;
     if(s.spawnT<=0&&s.depth>25){
-      s.spawnT=0.9+Math.random()*0.8;
+      s.spawnT=1.8+Math.random()*1.2;   /* 密度减半 */
       var zone=Math.min(5,Math.floor(s.depth/45));
       var table=[
         [{e:'🐟',v:1,jelly:false,eel:false}],
@@ -633,10 +682,10 @@ GAME[2]=function(){return{
           fxHeavy(s.px*W,H/2,'被鳗咬！包-30%','#ff6b6b');
           hearts--;hud(true);
           if(hearts<=0){ running=false;hearts=3;
-            if(endless){ var b4=loadBoard();b4.push({score:totalScore,t:Date.now()});
-              b4.sort(function(a,c){return c.score-a.score;});saveBoard(b4);endless=false;
-              $('failText').innerHTML='♾️ 无尽结束！本轮总分 <b style="color:#ffd166;">'+totalScore+'</b>（已记入排行榜）';
-            } else $('failText').textContent='深海危险…总分 '+s.score;
+            if(endless){ recordScore('endless',totalScore); endless=false;
+              $('failText').innerHTML='♾️ 无尽结束！'+playerName()+' 本轮总分 <b style="color:#ffd166;">'+totalScore+'</b>（已记入无尽榜）';
+            } else { recordScore('day2',s.score);
+              $('failText').textContent=playerName()+' 的深海成绩：'+s.score; }
             show('ovFail');return; } }
         else if(s.netCd<=0){
           s.bag+=c.v;s.netCd=1.3;c.dead=true;
@@ -652,26 +701,29 @@ GAME[2]=function(){return{
         var best=null,bv=-1;
         for(var n2=0;n2<s.creatures.length;n2++){ var cc=s.creatures[n2];
           if(!cc.jelly&&Math.abs(cc.d-s.depth)<60&&Math.abs(cc.x-s.px)<0.15&&cc.v>bv){ bv=cc.v;best=cc; } }
-        if(best){ s.bag+=best.v;s.netCd=1.3;best.dead=true;
+        if(best){ var gain=best.v;
+          if(s.depth>150&&s.o2<25){ gain*=2;totalScore+=gain;
+            fxHeavy(s.px*W,H/2-30,'险中取胜！+'+gain,'#ffd166'); }
+          else fxLight(s.px*W,H/2,'+'+gain,'#7ee08a');
+          s.bag+=gain;s.netCd=1.3;best.dead=true;
           if(best.pearl){ s.pearl=true;s.score+=40;
-            fxHeavy(W/2,H*0.35,'约定之珠！！','#ffd166'); }
-          else fxLight(s.px*W,H/2,'+'+best.v,'#7ee08a'); }
+            fxHeavy(W/2,H*0.35,'约定之珠！！','#ffd166'); } }
       }
     }
     if(s.o2<=0){
       hearts--;hud(true);
       if(hearts<=0){ running=false;hearts=3;
-        if(endless){ var b2=loadBoard();b2.push({score:totalScore,t:Date.now()});
-          b2.sort(function(a,c){return c.score-a.score;});saveBoard(b2);endless=false;
-          $('failText').innerHTML='♾️ 无尽结束！本轮总分 <b style="color:#ffd166;">'+totalScore+'</b>（已记入排行榜）';
-        } else $('failText').textContent='氧气耗尽…总分 '+s.score;
+        if(endless){ recordScore('endless',totalScore); endless=false;
+          $('failText').innerHTML='♾️ 无尽结束！'+playerName()+' 本轮总分 <b style="color:#ffd166;">'+totalScore+'</b>（已记入无尽榜）';
+        } else { recordScore('day2',s.score);
+          $('failText').textContent=playerName()+' 的氧气成绩：'+s.score; }
         show('ovFail');return; }
       fxHeavy(W/2,H/2,'救援绳拉你上来了！','#ffd166');
       s.score+=Math.floor(s.bag*0.7);s.bag=0;s.o2=100;s.depth=0;s.mode='dive';s.creatures=[];
     }
-    if(!s.done&&(s.score>=30||s.pearl)){ s.done=true;s.dolT=t;
+    if(!s.done&&(s.score>=60||s.pearl)){ s.done=true;s.dolT=t;
       fxHeavy(W/2,H*0.3,'今日配额达成！','#ffd166'); }
-    hud(true,null,'💰 '+s.score+'/30 · O₂ '+Math.max(0,Math.floor(s.o2))+'% · 包 '+s.bag);},
+    hud(true,null,'💰 '+s.score+'/60 · O₂ '+Math.max(0,Math.floor(s.o2))+'% · 包 '+s.bag);},
   draw:function(t,s){
     var dp=Math.min(1,s.depth/280);
     var g=X.createLinearGradient(0,0,0,H);
@@ -686,8 +738,18 @@ GAME[2]=function(){return{
     X.font='22px serif';X.textAlign='center';X.fillText('⛵',s.px*W>W/2?W*0.2:W*0.8,32);
     for(var i=0;i<s.creatures.length;i++){ var c=s.creatures[i];
       var cy=(c.d/280)*(H-120)+60;
-      if(cy<20||cy>H)continue;
-      X.font=(c.jelly?'20':'22')+'px serif';X.textAlign='center';X.textBaseline='middle';
+      if(cy<20||cy>H){
+        var edgeY=cy<20?74:H-42;
+        var dirOk=(cy<20&&c.d<s.depth)||(cy>H&&c.d>s.depth);
+        if(dirOk){ X.globalAlpha=0.45;X.font='13px sans-serif';X.textAlign='center';
+          X.fillStyle=c.jelly?'#c792ea':(c.eel?'#ff6b6b':'#ffd166');
+          X.fillText((cy<20?'▲':'▼')+c.e,c.x*W,edgeY);X.globalAlpha=1;X.fillStyle='#fff'; }
+        continue; }
+      if(c.jelly||c.eel){
+        X.strokeStyle=c.eel?'rgba(255,107,107,.75)':'rgba(199,146,234,.75)';
+        X.lineWidth=2;X.setLineDash([4,4]);
+        X.beginPath();X.arc(c.x*W,cy,26,0,7);X.stroke();X.setLineDash([]); }
+      X.font=(c.jelly||c.eel?'30':'26')+'px serif';X.textAlign='center';X.textBaseline='middle';
       X.fillText(c.e,c.x*W+Math.sin(t*0.002+c.d)*8,cy);
       X.globalAlpha=1;}
     X.textBaseline='alphabetic';
@@ -773,7 +835,7 @@ GAME[3]=function(){return{
       /* 从炮口沿瞄准角发射，扇形散开 */
       /* Ballz 式瞄准：手指相对屏幕中心的水平偏移决定角度（拖左射右），±60° */
       var dx=(s.aimX-0.5)*2;               /* -1..1 */
-      var baseAng=-Math.PI/2 - dx*1.05;    /* 拖左(dx<0)→角度变大→射向右上；拖右→射向左上 */
+      var baseAng=-Math.PI/2 + dx*1.05;    /* 拖左(dx<0)→角度变大→射向右上；拖右→射向左上 */
       if(baseAng>-Math.PI/6)baseAng=-Math.PI/6;
       if(baseAng<-Math.PI*5/6)baseAng=-Math.PI*5/6;
       for(var b=0;b<s.balls;b++){
@@ -795,6 +857,7 @@ GAME[3]=function(){return{
         for(var k=0;k<s.blocks.length;k++){ var bk=s.blocks[k];
           if(bk.dead)continue;
           if(bl.x>bk.x&&bl.x<bk.x+bk.w&&bl.y>bk.y&&bl.y<bk.y+bk.h){
+            bl.hitN=(bl.hitN||0)+1;
             /* 判定从哪个面进入 → 正确反弹 + 推出砖外（防一穿多扣血） */
             var overlapL=bl.x-bk.x, overlapR=bk.x+bk.w-bl.x;
             var overlapT=bl.y-bk.y, overlapB=bk.y+bk.h-bl.y;
@@ -838,7 +901,16 @@ GAME[3]=function(){return{
             break;
           }
         }
-        if(bl.y>H-30){ bl.dead=true;break; }
+        if(bl.y>H-30){ bl.dead=true;
+          if((bl.hitN||0)>=5){
+            var tier=bl.hitN>=12?'神之一瞄 ×'+bl.hitN+'!!':(bl.hitN>=8?'精准打击 ×'+bl.hitN:'顺手 ×'+bl.hitN);
+            fxHeavy(Math.min(W-40,Math.max(40,bl.x)),H-60,tier,'#ffd166');
+            try{ var ach=JSON.parse(localStorage.getItem('wave_ach')||'{}');
+              var best=ach.maxHits||0;
+              if(bl.hitN>best){ ach.maxHits=bl.hitN;localStorage.setItem('wave_ach',JSON.stringify(ach)); }
+            }catch(e){}
+          }
+          break; }
       }
       if(bl.dead)s.flying.splice(i,1);
     }
@@ -858,10 +930,10 @@ GAME[3]=function(){return{
         this.layout(s);
         fxHeavy(W/2,lineY||H*0.7,'海浪推回！','#7ec8e3');
         if(hearts<=0){ running=false;hearts=3;
-          if(endless){ var b3=loadBoard();b3.push({score:totalScore,t:Date.now()});
-            b3.sort(function(a,c){return c.score-a.score;});saveBoard(b3);endless=false;
-            $('failText').innerHTML='♾️ 无尽结束！本轮总分 <b style="color:#ffd166;">'+totalScore+'</b>（已记入排行榜）';
-          } else $('failText').textContent='摊位被占了…撑到第 '+s.wave+' 波';
+          if(endless){ recordScore('endless',totalScore); endless=false;
+            $('failText').innerHTML='♾️ 无尽结束！'+playerName()+' 本轮总分 <b style="color:#ffd166;">'+totalScore+'</b>（已记入无尽榜）';
+          } else { recordScore('day3',(s.wave-1)*100+s.gateIdx*10);
+            $('failText').textContent=playerName()+' 撑到第 '+s.wave+' 波'; }
           show('ovFail');return; } }
       s.betweenT=0.8;
     }},
@@ -908,7 +980,7 @@ GAME[3]=function(){return{
     X.fillText('🔴',W/2,H-40);
     if(s.aiming&&s.remain===0){
       var dx=(s.aimX-0.5)*2;
-      var baseAng=-Math.PI/2 - dx*1.05;
+      var baseAng=-Math.PI/2 + dx*1.05;
       if(baseAng>-Math.PI/6)baseAng=-Math.PI/6;
       if(baseAng<-Math.PI*5/6)baseAng=-Math.PI*5/6;
       X.strokeStyle='rgba(255,209,102,.7)';X.lineWidth=2;X.setLineDash([5,5]);
@@ -1097,10 +1169,23 @@ function renderBoard(){
   box.innerHTML=b.map(renderRow).join('');
 }
 
+function saveProgress(){
+  try{ localStorage.setItem('wave_progress',JSON.stringify({
+    mode:storyMode?'story':(endless?'endless':'arcade'),
+    day:day,score:totalScore,ts:Date.now()})); }catch(e){}
+}
+function clearProgress(){ try{ localStorage.removeItem('wave_progress'); }catch(e){} }
+function loadProgress(){ try{
+  var p=JSON.parse(localStorage.getItem('wave_progress')||'null');
+  if(p&&Date.now()-p.ts<1000*60*60*24*7)return p;  /* 7 天有效 */
+}catch(e){} return null; }
+
 function startDay(){
   running=false;hearts=3;starCount=0;cur=GAME[day]();state=cur;
   $('btnQuitGame').style.display='none';
+  $('d1hint').style.display='none';
   hud(false);
+  if(!storyMode)saveProgress();
   showChat(DAYS[day].intro,{goLabel:storyMode?'继续 ▸':'出发 ▸',onDone:function(){
     if(storyMode){ finishWin(); return; }
     hideAll();hud(true,DAYS[day].tag,DAYS[day].how);
@@ -1111,20 +1196,25 @@ function startDay(){
 function finishWin(){
   running=false;dlg(null);hud(false);
   localStorage.setItem('wave_endless','1');
+  if(endless){
+    /* 无尽模式：不退出！换下一关继续，分数累计 */
+    var nextDay=day%3+1;
+    day=nextDay;
+    var nextGame=GAME[day]();state=nextGame;cur=nextGame;
+    hearts=Math.min(3,hearts+1);
+    hideAll();hud(true,'♾️ 无尽 · '+DAYS[day].tag,DAYS[day].how);
+    showChat([{w:'n',t:'（浪王一挥手：换岗！本轮已攒 '+totalScore+' 分）'}],{goLabel:'继续 ▸',onDone:function(){
+      hideAll();cur.init(state);running=true;paused=false;
+      startLoop();
+    }});
+    return; }
   if(arcade){
-    var gameKey=endless?'endless':'day'+day;
-    var thisScore=endless?totalScore:(day===3?(state.wave-1)*100+(state.gateIdx||0)*10:(state.score||0));
+    var gameKey='day'+day;
+    var thisScore=(day===3?(state.wave-1)*100+(state.gateIdx||0)*10:(state.score||0));
     var rank=recordScore(gameKey,thisScore);
-    if(endless){
-      endless=false;
-      $('failText').innerHTML='♾️ 无尽结束！<br><br>'+playerName()+' 本轮总分 <b style="color:#ffd166;font-size:26px;">'+totalScore+'</b><br>'+
-        (rank>0&&rank<=8?'🏆 无尽榜第 '+rank+' 名！':'继续加油！')+'<br>已同步全球排行';
-      $('btnRetry').textContent='再来一轮';
-    } else {
-      $('failText').innerHTML='✅ 过关！<br><br>'+DAYS[day].title+' 完成<br><span style="font-size:13px;opacity:.8;">本关得分 '+thisScore+' · '+playerName()+
-        (rank>0&&rank<=8?' · 🏆 本地第 '+rank:'')+'</span>';
-      $('btnRetry').textContent='再玩一次';
-    }
+    $('failText').innerHTML='✅ 过关！<br><br>'+DAYS[day].title+' 完成<br><span style="font-size:13px;opacity:.8;">本关得分 '+thisScore+' · '+playerName()+
+      (rank>0&&rank<=8?' · 🏆 本地第 '+rank:'')+'</span>';
+    $('btnRetry').textContent='再玩一次';
     show('ovFail'); return; }
   memories.push(DAYS[day].memory);
   var after=day===3?function(){startEnding();}:function(){day++;startDay();};
@@ -1153,6 +1243,12 @@ $('btnSkip').addEventListener('click',function(){
   if(arcade){ show('ovSelect'); $('btnRetry').textContent='再试一次'; return; }
   finishWin();
 });
+$('btnHome').addEventListener('click',function(){
+  running=false;paused=false;endless=false;
+  $('btnQuitGame').style.display='none';
+  $('d1hint').style.display='none';
+  show('ovCover');
+});
 $('btnReplay').addEventListener('click',function(){
   day=1;memories=[];storyMode=false;startDay();
 });
@@ -1162,7 +1258,21 @@ function beginPrologue(){
   $('coverPic').src=ASSET.cover.indexOf('__')===0?'':ASSET.cover;
   showChat(PRO,{onDone:function(){day=1;startDay();}});
 }
-$('btnStart').addEventListener('click',function(){ storyMode=false;arcade=false;beginPrologue(); });
+$('btnStart').addEventListener('click',function(){ storyMode=false;arcade=false;clearProgress();beginPrologue(); });
+$('btnResume').addEventListener('click',function(){
+  var p=loadProgress(); if(!p)return;
+  day=p.day;totalScore=p.score||0;
+  if(p.mode==='endless'){ endless=true;arcade=true;storyMode=false; }
+  else if(p.mode==='arcade'){ arcade=true;storyMode=false;endless=false; }
+  else { storyMode=true;arcade=false;endless=false; }
+  hearts=3;starCount=0;cur=GAME[day]();state=cur;
+  hideAll();hud(true,DAYS[day].tag,DAYS[day].how);
+  showChat([{w:'n',t:'（欢迎回来，'+playerName()+'！继续 '+DAYS[day].title+'）'}],{goLabel:'继续 ▸',onDone:function(){
+    hideAll();cur.init(state);running=true;paused=false;
+    if(arcade||endless)$('btnQuitGame').style.display='block';
+    startLoop();
+  }});
+});
 $('btnStory').addEventListener('click',function(){ storyMode=true;arcade=false;beginPrologue(); });
 $('btnArcade').addEventListener('click',function(){
   if(ASSET.roleBai&&ASSET.roleBai.indexOf('__')!==0)$('selImg1').src=ASSET.roleBai;
@@ -1208,7 +1318,7 @@ $('btnEndless').addEventListener('click',function(){
 });
 [[1,'selD1'],[2,'selD2'],[3,'selD3']].forEach(function(p){
   $(''+p[1]).addEventListener('click',function(){
-    arcade=true;storyMode=false;day=p[0];
+    arcade=true;storyMode=false;day=p[0];endless=false;totalScore=0;
     running=false;hearts=3;starCount=0;cur=GAME[day]();state=cur;
     hideAll();hud(true,DAYS[day].tag,DAYS[day].how);
     $('btnQuitGame').style.display='block';

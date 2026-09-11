@@ -44,7 +44,9 @@
     border:2px solid #4f9fc0;box-shadow:inset 0 0 0 1.5px #fff,0 4px 0 #77b9d0,0 8px 16px rgba(56,143,177,.18);text-shadow:none;}
   .btn.ghost:active{background:#caedf7;box-shadow:inset 0 3px 5px rgba(46,125,158,.18),inset 0 0 0 1.5px #fff,0 1px 0 #77b9d0;}
   button:focus-visible,.card:focus-visible{outline:3px solid #176b91;outline-offset:3px;}
-  #hud{position:fixed;top:0;left:0;right:0;padding:calc(8px + env(safe-area-inset-top)) 62px 8px 14px;
+  #topBtns{position:fixed;top:calc(env(safe-area-inset-top, 0px) + 6px);right:8px;z-index:56;
+    display:none;flex-direction:column;gap:7px;align-items:center;}
+  #hud{position:fixed;top:0;left:0;right:0;padding:calc(8px + env(safe-area-inset-top)) 64px 8px 14px;
     display:none;justify-content:space-between;align-items:center;z-index:10;pointer-events:none;}
   #hud .tag{font-size:13px;font-weight:700;color:#174766;background:rgba(244,252,255,.91);
     padding:6px 13px;border-radius:14px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
@@ -207,8 +209,10 @@
   padding:7px 16px;border-radius:999px;font-size:13px;white-space:nowrap;pointer-events:none;"></div>
 
 <!-- 纯游戏退出 -->
-<button class="btn ghost" id="btnCards" style="display:none;position:fixed;top:calc(env(safe-area-inset-top, 0px) + 8px);right:86px;z-index:55;padding:8px 14px;font-size:14px;background:#eefbff;color:#245d79;border:2px solid #4f9fc0;">🎴<span id="cardCount"></span></button>
-<button class="btn ghost" id="btnQuitGame" aria-label="退出本局" title="退出本局" style="display:none;position:fixed;top:calc(env(safe-area-inset-top, 0px) + 8px);right:10px;z-index:55;padding:0;font-size:20px;background:#eefbff;color:#245d79;border:2px solid #4f9fc0;">✕</button>
+<div id="topBtns">
+<button class="btn ghost" id="btnCards" style="display:none;position:static;padding:7px 12px;font-size:14px;background:#eefbff;color:#245d79;border:2px solid #4f9fc0;box-shadow:0 3px 0 rgba(35,124,159,.34);">🎴<span id="cardCount"></span></button>
+<button class="btn ghost" id="btnQuitGame" aria-label="退出本局" title="退出本局" style="display:none;position:static;padding:4px 14px;font-size:20px;background:#eefbff;color:#245d79;border:2px solid #4f9fc0;box-shadow:0 3px 0 rgba(35,124,159,.34);">✕</button>
+</div>
 
 <!-- 失败 -->
 <div class="ov hidden" id="ovFail">
@@ -278,11 +282,23 @@ function makeBlockSprite(colors){
   g.addColorStop(0,colors[0]);g.addColorStop(.52,colors[1]);g.addColorStop(1,colors[2]);
   q.fillStyle=colors[3];localRoundRect(q,1,5,w-2,h-6,8);q.fill();
   q.fillStyle=g;localRoundRect(q,2,2,w-4,h-9,7);q.fill();
+  /* 瓷釉径向高光（左上） */
+  q.save();localRoundRect(q,2,2,w-4,h-9,7);q.clip();
+  var gloss=q.createRadialGradient(w*.3,h*.24,2,w*.3,h*.24,w*.72);
+  gloss.addColorStop(0,'rgba(255,255,255,.62)');gloss.addColorStop(1,'rgba(255,255,255,0)');
+  q.fillStyle=gloss;q.fillRect(0,0,w,h*.75);
+  /* 底部内衬阴影（厚度感） */
+  var bsh=q.createLinearGradient(0,h*.5,0,h-7);
+  bsh.addColorStop(0,'rgba(20,83,107,0)');bsh.addColorStop(1,'rgba(20,83,107,.3)');
+  q.fillStyle=bsh;q.fillRect(0,h*.5,w,h*.5);
+  q.restore();
   q.strokeStyle=colors[3];q.lineWidth=2;localRoundRect(q,1.5,1.5,w-3,h-8,7);q.stroke();
   q.strokeStyle='rgba(255,255,255,.96)';q.lineWidth=1.5;localRoundRect(q,4,4,w-8,h-13,5);q.stroke();
-  q.fillStyle='rgba(255,255,255,.54)';localRoundRect(q,6,6,w-12,(h-12)*.3,4);q.fill();
-  q.fillStyle='rgba(255,255,255,.2)';localRoundRect(q,8,8,w-16,4,2);q.fill();
-  q.fillStyle='rgba(20,83,107,.12)';q.fillRect(7,h-15,w-14,5);
+  /* 斜向细高光线（釉面反光） */
+  q.strokeStyle='rgba(255,255,255,.5)';q.lineWidth=2.5;q.lineCap='round';
+  q.beginPath();q.moveTo(12,h*.42);q.lineTo(w*.32,12);q.stroke();
+  q.strokeStyle='rgba(255,255,255,.32)';q.lineWidth=1.5;
+  q.beginPath();q.moveTo(18,h*.46);q.lineTo(w*.38,15);q.stroke();
   return c;
 }
 function rebuildVisualCache(){
@@ -324,6 +340,23 @@ function rebuildVisualCache(){
     g.addColorStop(0,'#F5FFF9');g.addColorStop(.45,'#A6F3D0');g.addColorStop(1,'#45B98C');
     c.fillStyle=g;c.beginPath();c.arc(z/2,z/2,23,0,Math.PI*2);c.fill();
     c.strokeStyle='#EFFFF8';c.lineWidth=2.5;c.stroke();
+    /* 中央金色五角星（渐变实心 + 白描边 + 内高光） */
+    c.save();c.translate(z/2,z/2);
+    var sg=c.createLinearGradient(0,-13,0,13);
+    sg.addColorStop(0,'#FFF6C8');sg.addColorStop(.5,'#FFD166');sg.addColorStop(1,'#F0A268');
+    c.fillStyle=sg;
+    c.beginPath();
+    for(var si=0;si<10;si++){
+      var sa=-Math.PI/2+si*Math.PI/5;
+      var sr=(si%2===0)?13:5.6;
+      var px2=Math.cos(sa)*sr, py2=Math.sin(sa)*sr;
+      if(si===0)c.moveTo(px2,py2);else c.lineTo(px2,py2);
+    }
+    c.closePath();c.fill();
+    c.strokeStyle='rgba(255,255,255,.95)';c.lineWidth=1.8;c.stroke();
+    c.fillStyle='rgba(255,255,255,.55)';
+    c.beginPath();c.ellipse(-3,-6,4.5,2.5,-0.6,0,Math.PI*2);c.fill();
+    c.restore();
   });
 }
 var W=0,H=0,DPR=1;
@@ -883,14 +916,19 @@ GAME[1]=function(){return{
     for(var i=0;i<n;i++){ var a=s.items[i];
       if(a.dead)continue;
       a.vy+=900*dt; a.y+=a.vy*dt;
-      if(a.x-a.r<s.basketL){ a.x=s.basketL+a.r; a.vx=Math.abs(a.vx)*0.3; }
-      if(a.x+a.r>s.basketR){ a.x=s.basketR-a.r; a.vx=-Math.abs(a.vx)*0.3; }
+      var rx=a.r*1.2;
+      if(a.x-rx<s.basketL){ a.x=s.basketL+rx; a.vx=Math.abs(a.vx)*0.3; }
+      if(a.x+rx>s.basketR){ a.x=s.basketR-rx; a.vx=-Math.abs(a.vx)*0.3; }
       var floor=H*0.86-a.r;
       if(a.y>floor){ a.y=floor; a.vy*=-0.15; a.vx*=0.9;
         if(Math.abs(a.vy)<20)a.vy=0; }
       for(var j=i+1;j<n;j++){ var b=s.items[j];
         if(b.dead)continue;
-        var dx=b.x-a.x,dy=b.y-a.y,dist=Math.hypot(dx,dy),min=a.r+b.r;
+        /* 椭圆碰撞：鱼形水平拉长，归一化距离 */
+        var dx=b.x-a.x,dy=b.y-a.y;
+        var arx=(a.r*1.2+b.r*1.2), ary=(a.r*0.85+b.r*0.85);
+        var dist=Math.sqrt((dx*dx)/(arx*arx)+(dy*dy)/(ary*ary));
+        var min=1;
         if(dist<min&&dist>0.01){
           if(a.type===b.type&&a.type<6){
             a.dead=true;b.dead=true;
@@ -1085,14 +1123,18 @@ GAME[2]=function(){return{
       c.x+=c.vx*dt/300;
       if(c.x<0.08||c.x>0.92)c.vx*=-1;
       var pd=c.d-s.depth, px2=c.x-s.px;
-      if(Math.abs(pd)<28&&Math.abs(px2)<0.09){
+      /* 判定收紧：水母=触手正后方 14m/0.05；鳗=嘴部 16m/0.065（不再凭空被蛰） */
+      var jRng=(c.jelly?{d:14,x:0.055}:(c.eel?{d:16,x:0.065}:{d:28,x:0.09}));
+      if(Math.abs(pd)<jRng.d&&Math.abs(px2)<jRng.x){
         if(c.jelly){ s.hurtT=1.2;s.o2-=8;c.dead=true;
           fxArcLine(s.px*W,H*0.5,'#F72585');
           fxSparkle(s.px*W,H*0.5,4);
           fxFloat(s.px*W,H*0.42,'⚡ 被蛰了！','#FFD6FF');
           fxMedium(s.px*W,H/2,'被水母蜇了！','#c792ea'); }
         else if(c.eel){ s.bag=Math.floor(s.bag*0.7);c.dead=true;s.hurtT=1.0;
-          fxHeavy(s.px*W,H/2,'被鳗咬！包-30%','#ff6b6b');
+          fxArcLine(s.px*W,H*0.5,'#E87978');
+          fxFloat(s.px*W,H*0.42,'⚠ 鱼获掉了些','#F3A98F');
+          fxHeavy(s.px*W,H/2,'被鳗咬！包-30%','#E87978');
           hearts--;hud(true);
           if(hearts<=0){ running=false;hearts=3;
             if(endless){ recordScore('endless',totalScore); endless=false;
@@ -1430,8 +1472,7 @@ GAME[3]=function(){return{
     for(var bui=0;bui<(s.bumpers||[]).length;bui++){ var bu2=s.bumpers[bui];
       var bux=bu2.x+Math.sin(t*0.003+bu2.phase)*3;
       if(VISUAL_CACHE.bumper)X.drawImage(VISUAL_CACHE.bumper,bux-28,bu2.y-28,56,56);
-      X.font='18px serif';X.textAlign='center';X.textBaseline='middle';
-      X.fillText('⭐',bux,bu2.y); }
+    }
     X.textBaseline='alphabetic';
     /* 飞行弹珠 + 拖尾 */
     for(var fi=0;fi<s.flying.length;fi++){ var fb=s.flying[fi];
@@ -1695,9 +1736,9 @@ function finishWin(){
         vx:(Math.random()-0.5)*60,vy:90+Math.random()*130,
         life:2.4,t:0,color:['#ffd166','#7ee08a','#7ec8e3','#ff9a5c'][ci2%4],size:4+Math.random()*3});
     }
-    /* 通关掉落助攻卡 */
+    /* 通关掉落助攻卡：全屏 juicy 展示 */
     var dropK=grantCard();
-    if(dropK)setTimeout(function(){fxFloat(W/2,H*0.25,'🎴 获得助攻卡：'+CARDS[dropK].n,'#ffd166');},300);
+    if(dropK)setTimeout(function(){ showCardGet(dropK); },650);
     var gameKey='day'+day;
     var thisScore=(day===3?(state.wave-1)*100+(state.gateIdx||0)*10:(state.score||0));
     var rank=recordScore(gameKey,thisScore);
@@ -1803,6 +1844,55 @@ function useCard(k){
   a.splice(i,1);saveCards(a);
   if(CARDS[k]&&CARDS[k].use&&state)CARDS[k].use(state);
   fxFloat(W/2,H*0.4,CARDS[k].i+' '+CARDS[k].n+'！','#ffd166');
+}
+/* 全屏获得卡牌展示（juicy） */
+var _cardGetting=false;
+function showCardGet(k){
+  if(_cardGetting)return;_cardGetting=true;
+  var c=CARDS[k];
+  var ov=document.createElement('div');
+  ov.style.cssText='position:fixed;inset:0;z-index:80;display:flex;flex-direction:column;align-items:center;justify-content:center;'+
+    'background:radial-gradient(ellipse at 50% 45%,rgba(255,240,180,.55) 0%,rgba(223,244,245,.88) 60%,rgba(168,221,232,.95) 100%);'+
+    'transition:opacity .3s;';
+  ov.innerHTML=
+    '<div style="font-size:15px;font-weight:800;color:#B26A2E;letter-spacing:3px;margin-bottom:18px;'+
+      'text-shadow:0 1px 0 #fff;animation:cgTitle .5s cubic-bezier(.16,1,.3,1);">🎴 获得助攻卡！</div>'+
+    '<div class="cardGet" style="width:150px;height:200px;border-radius:18px;position:relative;'+
+      'background:linear-gradient(165deg,#FFFDF5,#FFE9A8 55%,#F6D77A);'+
+      'border:3px solid #fff;box-shadow:0 0 0 3px rgba(246,215,122,.6),0 0 42px rgba(246,215,122,.85),0 16px 40px rgba(99,158,189,.4);'+
+      'display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;'+
+      'animation:cgFlip .62s cubic-bezier(.2,1.4,.4,1);">'+
+      '<div style="position:absolute;inset:6px;border-radius:13px;border:1.5px dashed rgba(178,106,46,.4);"></div>'+
+      '<div style="font-size:56px;filter:drop-shadow(0 4px 8px rgba(178,106,46,.35));animation:cgBounce .8s .5s cubic-bezier(.2,1.6,.4,1);">'+c.i+'</div>'+
+      '<div style="font-size:17px;font-weight:900;color:#5A3A1A;">'+c.n+'</div>'+
+      '<div style="font-size:11.5px;color:#8A6A3A;padding:0 14px;line-height:1.5;text-align:center;">'+c.d+'</div>'+
+    '</div>'+
+    '<div id="cgTap" style="margin-top:26px;font-size:13px;font-weight:700;color:#2E7D8A;'+
+      'opacity:0;animation:cgFadeIn .4s .9s forwards;">点击任意处继续</div>';
+  var st=document.createElement('style');
+  st.textContent=
+    '@keyframes cgFlip{0%{transform:perspective(700px) rotateY(95deg) scale(.6);opacity:0}'+
+    '60%{transform:perspective(700px) rotateY(-12deg) scale(1.06);opacity:1}'+
+    '100%{transform:perspective(700px) rotateY(0) scale(1)}}'+
+    '@keyframes cgTitle{0%{transform:translateY(-24px);opacity:0}100%{transform:translateY(0);opacity:1}}'+
+    '@keyframes cgBounce{0%,100%{transform:translateY(0)}40%{transform:translateY(-10px)}}'+
+    '@keyframes cgFadeIn{to{opacity:1}}';
+  ov.appendChild(st);
+  document.body.appendChild(ov);
+  for(var i=0;i<16;i++){
+    var s2=document.createElement('div');
+    s2.textContent=['✨','⭐','🌟'][i%3];
+    s2.style.cssText='position:absolute;left:'+(5+Math.random()*90)+'%;top:-30px;font-size:'+(14+Math.random()*16)+'px;'+
+      'animation:cgStar '+(1.1+Math.random()*0.9)+'s linear '+(Math.random()*0.5)+'s forwards;';
+    ov.appendChild(s2);
+  }
+  var st2=document.createElement('style');
+  st2.textContent='@keyframes cgStar{to{transform:translateY('+window.innerHeight+'px) rotate('+(180+Math.random()*360)+'deg);opacity:.2}}';
+  ov.appendChild(st2);
+  ov.addEventListener('click',function(){
+    ov.style.opacity='0';
+    setTimeout(function(){ ov.remove();_cardGetting=false; },320);
+  });
 }
 function showCards(){
   var a=ownedCards(), box=$('cardList');

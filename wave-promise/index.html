@@ -203,7 +203,6 @@
 
 <!-- 封面 -->
 <div class="ov" id="ovCover">
-  <img id="coverWaveTop" style="position:absolute;top:0;left:0;width:100%;height:90px;object-fit:cover;opacity:.55;pointer-events:none;" alt="">
   <img class="pic" id="coverPic" alt="">
   <h1>浪的约定</h1>
   <p class="sub">晨市堆堆乐 · 深潜之约 · 夜市弹珠摊<br>一个关于海、打工与约定的狗狗夏日物语<br><span style="font-size:10px;opacity:.55;">v9.3</span></p>
@@ -403,7 +402,6 @@ setTimeout(function(){
       } else { st.dataset.confirmed=''; st.textContent='🌊 开始旅程'; }
     },true);
   }
-  if(ASSET.uiFrame&&ASSET.uiFrame.indexOf('__')!==0)$('coverWaveTop').src=ASSET.uiFrame;
   if(ASSET.cover&&ASSET.cover.indexOf('__')!==0)$('coverPic').src=ASSET.cover;
   try{ var sv=localStorage.getItem('wave_diff');
     if(sv){ difficulty=sv;
@@ -863,13 +861,13 @@ function todayMarket(){
   return MARKET_TABLES[idx];
 }
 var SUIKA_TYPES=[
-  {n:'海螺',r:14,score:2,w:40,emoji:'🐚'},
-  {n:'蛤蜊',r:20,score:4,w:30,emoji:'🦪'},
-  {n:'螃蟹',r:27,score:8,w:20,emoji:'🦀'},
-  {n:'小黄鱼',r:34,score:16,w:4,emoji:'🐟'},
-  {n:'河豚',r:43,score:32,w:0,emoji:'🐡'},
-  {n:'海龟',r:54,score:64,w:0,emoji:'🐢'},
-  {n:'珍珠贝',r:66,score:128,w:0,emoji:'💎'}
+  {n:'海螺',r:17,score:2,w:40,emoji:'🐚'},
+  {n:'蛤蜊',r:25,score:4,w:30,emoji:'🦪'},
+  {n:'螃蟹',r:34,score:8,w:20,emoji:'🦀'},
+  {n:'小黄鱼',r:42,score:16,w:4,emoji:'🐟'},
+  {n:'河豚',r:53,score:32,w:0,emoji:'🐡'},
+  {n:'海龟',r:66,score:64,w:0,emoji:'🐢'},
+  {n:'珍珠贝',r:80,score:128,w:0,emoji:'💎'}
 ];
 function pickType(unlockMax){
   var pool=[],tw=0;
@@ -894,13 +892,13 @@ function todayMarket(){
   return MARKET_TABLES[idx];
 }
 var SUIKA_TYPES=[
-  {n:'海螺',r:14,score:2,w:40,emoji:'🐚'},
-  {n:'蛤蜊',r:20,score:4,w:30,emoji:'🦪'},
-  {n:'螃蟹',r:27,score:8,w:20,emoji:'🦀'},
-  {n:'小黄鱼',r:34,score:16,w:4,emoji:'🐟'},
-  {n:'河豚',r:43,score:32,w:0,emoji:'🐡'},
-  {n:'海龟',r:54,score:64,w:0,emoji:'🐢'},
-  {n:'珍珠贝',r:66,score:128,w:0,emoji:'💎'}
+  {n:'海螺',r:17,score:2,w:40,emoji:'🐚'},
+  {n:'蛤蜊',r:25,score:4,w:30,emoji:'🦪'},
+  {n:'螃蟹',r:34,score:8,w:20,emoji:'🦀'},
+  {n:'小黄鱼',r:42,score:16,w:4,emoji:'🐟'},
+  {n:'河豚',r:53,score:32,w:0,emoji:'🐡'},
+  {n:'海龟',r:66,score:64,w:0,emoji:'🐢'},
+  {n:'珍珠贝',r:80,score:128,w:0,emoji:'💎'}
 ];
 function pickType(unlockMax){
   var pool=[],tw=0;
@@ -985,7 +983,8 @@ GAME[1]=function(){return{
           var hyp=Math.hypot(dx,dy)||0.01;
           var nx=dx/hyp, ny=dy/hyp;
           var push=(min-dist)*Math.min(arx,ary)*0.5;   /* 归一化差 × 平均半径 = 像素重叠量 */
-          push=Math.min(push,12);                       /* 单帧最多推开 12px，防弹飞 */
+          push*=diffCfg().d1pushy||1;
+push=Math.min(push,12);                       /* 单帧最多推开 12px，防弹飞 */
           a.x-=nx*push;a.y-=ny*push;b.x+=nx*push;b.y+=ny*push;
           var rvx=b.vx-a.vx, rvy=b.vy-a.vy;
           var dot=rvx*nx+rvy*ny;
@@ -1173,8 +1172,9 @@ GAME[2]=function(){return{
     }
     if(s.depth>280)s.depth=280;
     /* 黄金矿工式：生物进关时全生成完毕，运行时只更新鳗鱼巡逻 */
+    var eelMul=diffCfg().d2eelSpd||1;
     for(var ei=0;ei<s.creatures.length;ei++){ var ec=s.creatures[ei];
-      if(ec.eel){ ec.x+=ec.vx*dt/60; if(ec.x<0.15||ec.x>0.85)ec.vx*=-1; } }
+      if(ec.eel){ ec.x+=ec.vx*eelMul*dt/60; if(ec.x<0.15||ec.x>0.85)ec.vx*=-1; } }
     for(var i=s.creatures.length-1;i>=0;i--){ var c=s.creatures[i];
       if(c.eel){ var dir=s.px-c.x;
         if(Math.abs(c.d-s.depth)<80){ c.x+=Math.sign(dir)*0.06*dt;
@@ -1319,13 +1319,15 @@ GAME[3]=function(){return{
     s.aimX=0.5;s.aiming=false;s.flying=[];s.remain=0;
     s.blocks=[];s.bumpers=[];s.cellH=H/14;s.betweenT=0;
     this.spawnWave(s);
-    starCount=0;state.goalLabel='🎯 第 1 / 8 波';hud(true,null,state.goalLabel);
+    starCount=0;state.goalLabel=endless?'♾️ 无尽 · 第 1 波':'🎯 第 1 / 8 波';hud(true,null,state.goalLabel);
     dlg({w:'note',t:'老板：「帮我打椰子招揽客人，赢满 8 波，摊位分你一成！」按住拖动瞄准（虚线是弹道），松手发射。方块每轮下压一格——压到沙滩就完了！'});},
   spawnWave:function(s){
     /* 更多砖（6-10 块）但随机留空列 + 圆形障碍增加随机反弹 */
     var n=diffCfg().d3brick(s.wave);
     var used={};
     for(var i=0;i<n;i++){
+      /* 无尽 9 波起：60% 概率本块不生成 */
+      if(endless&&s.wave>8&&Math.random()<0.6)continue;
       var col=Math.floor(Math.random()*5);
       var tries=0;
       while(used[col]&&tries<8){ col=Math.floor(Math.random()*5);tries++; }
@@ -1365,14 +1367,18 @@ GAME[3]=function(){return{
     if(s.betweenT>0){ s.betweenT-=dt;
       if(s.betweenT<=0){
         s.wave++;starCount=s.wave;totalScore+=s.wave*10;
-        hud(true,null,'🎯 第 '+s.wave+' / 8 波');
-        if(s.wave>8&&!s.done){
-          if(endless){ /* 无尽：波次无限，每 8 波一轮奖励，继续 */
+        if(endless&&s.wave>8){
+          if((s.wave-1)%8===0){
             var wb=200;s.score+=wb;totalScore+=wb;
-            fxFloat(W/2,H*0.3,'🌀 一轮完成 +'+wb+'！继续','#FFD166');
-          } else { s.done=true;s.dolT=t; }
-          fxHeavy(W/2,H*0.4,'夜市之星！','#ffd166');return; }
-        s.balls=Math.min(s.maxBalls,s.balls+1);
+            fxHeavy(W/2,H*0.35,'🌀 第 '+((s.wave-1)/8)+' 轮完成 +'+wb+'！','#FFD166');
+          }
+          hud(true,null,'♾️ 无尽 · 第 '+s.wave+' 波');
+        } else {
+          hud(true,null,'🎯 第 '+s.wave+' / 8 波');
+          if(s.wave>8&&!s.done){ s.done=true;s.dolT=t;
+            fxHeavy(W/2,H*0.4,'夜市之星！','#ffd166');return; }
+        }
+        if(!(endless&&difficulty==='hard'))s.balls=Math.min(s.maxBalls,s.balls+1);
         this.spawnWave(s);
       }
       return;
@@ -1594,18 +1600,38 @@ GAME[3]=function(){return{
         X.drawImage(VISUAL_CACHE.ball,fb.x-bSz/2,fb.y-bSz/2,bSz,bSz);
       }
       else {X.fillStyle='#FFF2B8';X.beginPath();X.arc(fb.x,fb.y,7,0,7);X.fill();} }
-    /* 炮台：小白角色，随瞄准旋转，发射后坐 */
+    /* 炮台：程序化雪白圆炮台（瓷釉小狗圆头，画风统一） */
     var cannonRecoil=(s.recoilT||0)>0?(s.recoilT/0.15)*8:0;
     var aimAng=(s.lastAimAng!==undefined)?s.lastAimAng:-Math.PI/2;
     X.save();
-    X.translate(W/2,H-52-cannonRecoil);
+    X.translate(W/2,H-56-cannonRecoil);
     X.rotate(aimAng+Math.PI/2);
-    if(ASSET.roleBai&&ASSET.roleBai.indexOf('__')!==0){
-      var ci=ROLE_IMG['roleBai']||(function(){var im=new Image();im.src=ASSET.roleBai;ROLE_IMG['roleBai']=im;return im;})();
-      if(ci&&ci.complete&&ci.naturalWidth>0){
-        X.drawImage(ci,-22,-22,44,44);
-      } else { X.font='30px serif';X.textAlign='center';X.fillText('🐶',0,10); }
-    } else { X.font='30px serif';X.textAlign='center';X.fillText('🐶',0,10); }
+    var bg=X.createLinearGradient(-9,0,9,0);
+    bg.addColorStop(0,'#9FD4FF');bg.addColorStop(0.5,'#D8F1FF');bg.addColorStop(1,'#4F9BCB');
+    X.fillStyle=bg;
+    localRoundRect(X,-9,-34,18,36,9);X.fill();
+    X.strokeStyle='rgba(255,255,255,.9)';X.lineWidth=2;localRoundRect(X,-9,-34,18,36,9);X.stroke();
+    X.fillStyle='#F7FCFF';X.beginPath();X.arc(0,-32,7,0,7);X.fill();
+    X.strokeStyle='#4F9BCB';X.lineWidth=2;X.stroke();
+    X.restore();
+    X.save();
+    X.translate(W/2,H-56);
+    var baseG=X.createRadialGradient(-6,-8,3,0,0,26);
+    baseG.addColorStop(0,'#FFFFFF');baseG.addColorStop(0.7,'#F1FAFF');baseG.addColorStop(1,'#C9E8F7');
+    X.fillStyle=baseG;
+    X.beginPath();X.arc(0,0,24,0,7);X.fill();
+    X.strokeStyle='#4F9BCB';X.lineWidth=2.5;X.stroke();
+    X.fillStyle='#E8F5FD';
+    X.beginPath();X.ellipse(-19,-6,6,11,0.5,0,7);X.fill();
+    X.strokeStyle='#7FB8D8';X.lineWidth=1.5;X.stroke();
+    X.beginPath();X.ellipse(19,-6,6,11,-0.5,0,7);X.fill();X.stroke();
+    X.fillStyle='#28505A';
+    X.beginPath();X.arc(-8,-4,2.6,0,7);X.fill();
+    X.beginPath();X.arc(8,-4,2.6,0,7);X.fill();
+    X.beginPath();X.arc(0,3,3.4,0,7);X.fill();
+    X.fillStyle='#FFD166';
+    X.beginPath();X.arc(0,-18,8,Math.PI,0);X.fill();
+    X.fillRect(-11,-19,22,3.5);
     X.restore();
     if(s.aiming&&s.remain===0){
       var dx=(s.aimX-0.5)*2;
@@ -1927,7 +1953,6 @@ $('btnArcade').addEventListener('click',function(){
     storyMode=true;arcade=false;beginPrologue();return;
   }
   if(ASSET.roleBai&&ASSET.roleBai.indexOf('__')!==0)$('selImg1').src=ASSET.roleBai;
-  if(ASSET.uiFrame&&ASSET.uiFrame.indexOf('__')!==0)$('coverWaveTop').src=ASSET.uiFrame;
   var unlocked=localStorage.getItem('wave_endless')==='1';
   $('btnEndless').style.display=unlocked?'block':'none';
   $('myBest').textContent='🏄'+((loadBoard2('day1')[0]||{}).score||0)+
@@ -2034,21 +2059,23 @@ var difficulty='normal';
 function diffCfg(){
   var t={
     /* 四维：局内压力 / 失误代价 / 资源稀缺 / 后期增长 */
-    easy:{d1Line:0.15,d2O2:1.25,d2Goal:70,d3Row:12,name:'轻松',
-      d1w:[38,32,22,8],  d1unlock:[30,80],  d1burst:3.0, d1combo:4.5,
-      d2o2bot:5,  d2jelly:6,  d2rise:75,
-      d3brick:function(w){return 4+Math.min(4,w);}, d3hp:function(w){return Math.ceil(w*0.8)+1;},
-      d3dead:8,  d3special:0.14, d3aim:68},
+    easy:{d1Line:0.13,d2O2:1.4,d2Goal:60,d3Row:13,name:'轻松',
+      d1w:[32,34,24,10], d1unlock:[25,70],  d1burst:3.5, d1combo:5.0,
+      d2o2bot:4,  d2jelly:5,  d2rise:80,
+      d3brick:function(w){return 4+Math.min(3,w);}, d3hp:function(w){return Math.ceil(w*0.7)+1;},
+      d3dead:7,  d3special:0.18, d3aim:70,
+      d1pushy:0.8, d2eelSpd:0.7, d3ballGain:1},
     normal:{d1Line:0.22,d2O2:1.0,d2Goal:90,d3Row:10,name:'标准',
       d1w:[34,31,23,7],  d1unlock:[40,100], d1burst:1.8, d1combo:3.0,
       d2o2bot:7,  d2jelly:8,  d2rise:68,
       d3brick:function(w){return 5+Math.min(6,w);}, d3hp:function(w){return w+Math.floor(w/2);},
       d3dead:10, d3special:0.10, d3aim:68},
-    hard:{d1Line:0.28,d2O2:0.85,d2Goal:110,d3Row:9,name:'挑战',
-      d1w:[40,28,20,12], d1unlock:[55,130], d1burst:0.8, d1combo:2.2,
-      d2o2bot:9,  d2jelly:12, d2rise:60,
-      d3brick:function(w){return 5+Math.min(8,w);}, d3hp:function(w){return w+Math.floor(w*0.8);},
-      d3dead:14, d3special:0.06, d3aim:55}
+    hard:{d1Line:0.32,d2O2:0.7,d2Goal:130,d3Row:8,name:'挑战',
+      d1w:[46,26,18,10], d1unlock:[70,150], d1burst:0.5, d1combo:1.8,
+      d2o2bot:11, d2jelly:15, d2rise:52,
+      d3brick:function(w){return 6+Math.min(9,w);}, d3hp:function(w){return w+Math.floor(w*1.1);},
+      d3dead:18, d3special:0.04, d3aim:48,
+      d1pushy:1.25, d2eelSpd:1.5, d3ballGain:0}
   };
   return t[difficulty]||t.normal;
 }

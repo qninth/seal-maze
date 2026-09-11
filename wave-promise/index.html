@@ -352,10 +352,14 @@ function fxParticle(x,y,opts){ opts=opts||{};
   FX.particles.push({x:x,y:y,vx:opts.vx||0,vy:opts.vy||-60,life:opts.life||0.3,t:0,
     size:opts.size||3,color:opts.color||'#fff',grav:opts.grav!==undefined?opts.grav:120}); }
 function fxBurst(x,y,n,opts){ opts=opts||{};
+  if(FX.particles.length>60)return;
   for(var i=0;i<n;i++){ var a=Math.random()*Math.PI*2,sp=(opts.speed||80)*(0.4+Math.random()*0.6);
     fxParticle(x,y,{vx:Math.cos(a)*sp,vy:Math.sin(a)*sp-40,life:0.25+Math.random()*0.2,
       size:2+Math.random()*2,color:opts.color||'#fff',grav:opts.grav!==undefined?opts.grav:60}); } }
-function fxFloat(x,y,text,color){ FX.floats.push({x:x,y:y,text:text,color:color||'#ffd166',t:0,life:0.8}); }
+function fxFloat(x,y,text,color){
+  if(FX.floats.length>5)FX.floats.shift();
+  FX.floats.push({x:x,y:y,text:text,color:color||'#ffd166',t:0,life:0.8});
+}
 function fxUpdate(dt){
   if(FX.hitstop>0){ FX.hitstop-=dt; return false; }
   if(FX.shakeT>0){ FX.shakeT-=dt; if(FX.shakeT<=0)FX.shake=0; }
@@ -515,7 +519,7 @@ GAME[1]=function(){return{
     if(s.cool>0){ s.cool-=dt; }
     if(s.comboT>0){ s.comboT-=dt; if(s.comboT<=0)s.comboN=0; }
     if((s.comboN||0)>=3&&t-(s.comboBannerT||0)>2){ s.comboBannerT=t;
-      fxMedium(W/2,H*0.16,'×'+s.comboN+' 连锁！','#ffd166'); }
+      fxFloat(W/2,H*0.16,'×'+s.comboN+' 连锁！','#ffd166'); }
     var el=(t-s.startT)/1000;
     if(el>40)s.unlockMax=Math.max(s.unlockMax,2);
     if(el>100)s.unlockMax=Math.max(s.unlockMax,3);
@@ -549,8 +553,8 @@ GAME[1]=function(){return{
             var pts=Math.round(T.score*mult);s.score+=pts;addStar(0);totalScore+=pts;
             hud(true,null,'🐟 '+s.score+' / 150 分');
             var mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
-            if(nt>=5){ fxHeavy(mx,my,'合成 '+T.n+'！+'+pts,'#ffd166'); }
-            else { fxMedium(mx,my,T.n+' +'+pts,'#7ee08a'); }
+            if(nt>=5){ fxHitstop(60);fxFlash(mx,my);fxBurst(mx,my,10,{color:'#ffd166',speed:90});fxFloat(mx,my-26,'合成 '+T.n+'！+'+pts,'#ffd166'); }
+            else { fxHitstop(25);fxFlash(mx,my);fxBurst(mx,my,4,{color:'#7ee08a',speed:55});fxFloat(mx,my-24,T.n+' +'+pts,'#7ee08a'); }
             continue;
           }
           var push=(min-dist)/2,nx=dx/dist,ny=dy/dist;
@@ -583,7 +587,7 @@ GAME[1]=function(){return{
         for(var m3=0;m3<s.items.length;m3++){ if(s.items[m3].y<topY+SUIKA_TYPES[s.items[m3].type].r){
           fxBurst(s.items[m3].x,s.items[m3].y,5,{color:'#7ec8e3'});
           s.items.splice(m3,1);m3--; } }
-        fxHeavy(W/2,s.lineY+40,'老板援手！','#ffd166');
+        fxHitstop(60);fxFloat(W/2,s.lineY+40,'老板援手！','#ffd166');fxBurst(W/2,s.lineY+40,8,{color:'#ffd166'});
         paused=true;
         showChat([{w:'w',t:'行了行了，压坏的那些算你一半工钱。'}],{onDone:function(){
           paused=false;lastT=performance.now();
@@ -653,7 +657,8 @@ GAME[2]=function(){return{
       if(touchDown){ s.mode='dive'; }
       s.o2-=0.5*dt;
     } else if(s.mode==='dive'){
-      s.depth+=55*dt; s.o2-=(1+7*(s.depth/280))*dt;
+      var spd=s.depth<150?55:32;   /* 深水减速：看得清、躲得开 */
+      s.depth+=spd*dt; s.o2-=(1+7*(s.depth/280))*dt*(s.depth<150?1:1.15);
       if(!touchDown)s.mode='rise';
     } else {
       s.depth-=60*dt; s.o2-=2.5*dt;
@@ -686,7 +691,8 @@ GAME[2]=function(){return{
         vx:(Math.random()-0.5)*40});
     }
     if(s.depth>200&&!s.pearlSpawned){ s.pearlSpawned=true;
-      s.creatures.push({e:'💎',v:40,x:0.3+Math.random()*0.4,d:265,jelly:false,pearl:true,vx:20}); }
+      s.creatures.push({e:'💎',v:40,x:0.3+Math.random()*0.4,d:265,jelly:false,pearl:true,vx:20});
+      fxFloat(W/2,H*0.35,'✨ 下方传来约定的光芒…','#ffd166'); }
     for(var i=s.creatures.length-1;i>=0;i--){ var c=s.creatures[i];
       if(c.eel){ var dir=s.px-c.x;
         if(Math.abs(c.d-s.depth)<80){ c.x+=Math.sign(dir)*0.06*dt;
@@ -770,7 +776,13 @@ GAME[2]=function(){return{
         X.beginPath();X.arc(c.x*W,cy,26,0,7);X.stroke();X.setLineDash([]); }
       X.font=(c.jelly||c.eel?'30':'26')+'px serif';X.textAlign='center';X.textBaseline='middle';
       X.fillText(c.e,c.x*W+Math.sin(t*0.002+c.d)*8,cy);
-      X.globalAlpha=1;}
+      X.globalAlpha=1;
+      /* 近距离生物名字条（互动感） */
+      if(Math.abs(c.d-s.depth)<50){
+        var label=c.pearl?'约定之珠 ×40':(c.jelly?'水母 危险':(c.eel?'深海鳗 危险':('+'+c.v)));
+        X.font='11px sans-serif';X.textAlign='center';
+        X.fillStyle=c.jelly||c.eel?'rgba(255,107,107,.9)':'rgba(126,232,138,.9)';
+        X.fillText(label,c.x*W,cy+22); }}
     X.textBaseline='alphabetic';
     var py2=(s.depth/280)*(H-120)+60;
     X.font='30px serif';X.textAlign='center';
@@ -859,20 +871,23 @@ GAME[3]=function(){return{
       if(baseAng<-Math.PI*5/6)baseAng=-Math.PI*5/6;
       for(var b=0;b<s.balls;b++){
         var a2=baseAng+((b-(s.balls-1)/2))*0.05;
-        s.flying.push({x:W/2,y:H-60,vx:Math.cos(a2)*330,vy:Math.sin(a2)*330,
+        s.flying.push({x:W/2,y:H-60,vx:Math.cos(a2)*390,vy:Math.sin(a2)*390,
           trail:[],dead:false,launchT:t});
         s.remain++;
       }
       fxShake(2,80);
     }
     for(var i=s.flying.length-1;i>=0;i--){ var bl=s.flying[i];
+      bl.airT=(bl.airT||0)+dt;
+      if(bl.airT>6){ /* 死球强制回收（防循环反弹） */
+        bl.dead=true;fxFloat(bl.x,Math.min(H-40,bl.y),'弹珠回收','#7ec8e3'); }
       bl.trail.push({x:bl.x,y:bl.y});
       if(bl.trail.length>7)bl.trail.shift();
       for(var st2=0;st2<3;st2++){
         bl.x+=bl.vx*dt/3; bl.y+=bl.vy*dt/3;
-        if(bl.x<8){ bl.x=8;bl.vx=Math.abs(bl.vx); }
-        if(bl.x>W-8){ bl.x=W-8;bl.vx=-Math.abs(bl.vx); }
-        if(bl.y<50){ bl.y=50;bl.vy=Math.abs(bl.vy); }
+        if(bl.x<8){ bl.x=8;bl.vx=Math.abs(bl.vx);bl.vy+=(Math.random()-0.5)*18; }
+        if(bl.x>W-8){ bl.x=W-8;bl.vx=-Math.abs(bl.vx);bl.vy+=(Math.random()-0.5)*18; }
+        if(bl.y<50){ bl.y=50;bl.vy=Math.abs(bl.vy);bl.vx+=(Math.random()-0.5)*18; }
         for(var k=0;k<s.blocks.length;k++){ var bk=s.blocks[k];
           if(bk.dead)continue;
           if(bl.x>bk.x&&bl.x<bk.x+bk.w&&bl.y>bk.y&&bl.y<bk.y+bk.h){
@@ -885,7 +900,7 @@ GAME[3]=function(){return{
             else if(minO===overlapR){ bl.x=bk.x+bk.w+1; bl.vx=Math.abs(bl.vx); }
             else if(minO===overlapT){ bl.y=bk.y-1; bl.vy=-Math.abs(bl.vy); }
             else { bl.y=bk.y+bk.h+1; bl.vy=Math.abs(bl.vy); }
-            bk.hp--;
+            bk.hp--;s.roundHitN=(s.roundHitN||0)+1;
             fxLight(bl.x,bl.y,'#ffd166');
             if(bk.hp<=0){ bk.dead=true;
               var cx2=bk.x+bk.w/2,cy2=bk.y+bk.h/2;
@@ -934,6 +949,8 @@ GAME[3]=function(){return{
       if(bl.dead)s.flying.splice(i,1);
     }
     if(s.remain>0&&s.flying.length===0){
+      var roundHits=0;
+      for(var rh=0;rh<s.lastRoundHits||0;rh++){}
       s.remain=0;
       for(var d2=0;d2<s.blocks.length;d2++){ s.blocks[d2].row++; }
       s.blocks=s.blocks.filter(function(b){return b.row<13;});
@@ -954,7 +971,8 @@ GAME[3]=function(){return{
           } else { recordScore('day3',(s.wave-1)*100+s.gateIdx*10);
             $('failText').textContent=playerName()+' 撑到第 '+s.wave+' 波'; }
           show('ovFail');return; } }
-      s.betweenT=0.8;
+      s.betweenT=s.roundHitN?0.7:0.25;  /* 空轮快速过 */
+      s.roundHitN=0;
     }},
   draw:function(t,s){
     drawSea(t);

@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Wave Promise V9.3 build 1789134473 -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -192,7 +193,7 @@
   <img id="coverWaveTop" style="position:absolute;top:0;left:0;width:100%;height:90px;object-fit:cover;opacity:.55;pointer-events:none;" alt="">
   <img class="pic" id="coverPic" alt="">
   <h1>浪的约定</h1>
-  <p class="sub">晨市堆堆乐 · 深潜之约 · 夜市弹珠摊<br>一个关于海、打工与约定的狗狗夏日物语</p>
+  <p class="sub">晨市堆堆乐 · 深潜之约 · 夜市弹珠摊<br>一个关于海、打工与约定的狗狗夏日物语<br><span style="font-size:10px;opacity:.55;">v9.3</span></p>
   <button class="btn" id="btnStart">🌊 开始旅程</button>
   <button class="btn" id="btnResume" style="display:none;background:#bdeefa;color:#174766;">▶️ 继续上次进度</button>
   <button class="btn ghost" id="btnStory" style="margin-top:10px;">📖 剧情模式 · 只看故事</button>
@@ -1162,6 +1163,7 @@ GAME[2]=function(){return{
         else if(s.netCd<=0){
           s.bag+=c.v;s.netCd=1.3;c.dead=true;
           if(c.pearl){ s.pearl=true;s.score+=40;
+            fxFloat(W/2,H*0.28,'💎 带回水面落袋！','#FFD166');
             fxHeavy(W/2,H*0.35,'约定之珠！！','#ffd166'); }
           else { fxSparkle(s.px*W,H/2,6); fxBubbles(s.px*W,H/2+14,4);
                  fxFloat(s.px*W,H/2-16,'+'+c.v,'#FFE66D'); }
@@ -1195,7 +1197,8 @@ GAME[2]=function(){return{
       fxHeavy(W/2,H/2,'救援绳拉你上来了！','#ffd166');
       s.score+=Math.floor(s.bag*0.7);s.bag=0;s.o2=100;s.depth=0;s.mode='dive';s.creatures=[];
     }
-    if(!s.done&&(s.score>=diffCfg().d2Goal||s.pearl)){ s.done=true;s.dolT=t;
+    /* 胜利只看分数（珍珠落袋得 40 分），抓在手里不算 */
+    if(!s.done&&s.score>=diffCfg().d2Goal){ s.done=true;s.dolT=t;
       fxHeavy(W/2,H*0.3,'今日配额达成！','#ffd166'); }
     hud(true,null,'💰 '+s.score+'/'+diffCfg().d2Goal+' · O₂ '+Math.max(0,Math.floor(s.o2))+'% · 包 '+s.bag);},
   draw:function(t,s){

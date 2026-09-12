@@ -523,7 +523,8 @@ $('btnChatGo').addEventListener('click',function(){
 });
 
 /* ================= 输入 ================= */
-var touchSide=0,touchX=0.5,touchDown=false,tapPulse=0;
+var touchSide=0,touchX=0.5,touchY=0.5,touchDown=false,tapPulse=0;
+var touchStartT=0,tapX=0.5,tapY=0.5;
 function gameActive(){ return running&&!paused&&$('dlg').style.display!=='block'; }
 function sideFrom(x){ return x<W/2?-1:1; }
 function onStart(e){
@@ -541,14 +542,20 @@ function onStart(e){
   }
   if(!running||paused)return;
   var t=e.touches?e.touches[0]:e;
-  touchSide=sideFrom(t.clientX);tapPulse=1;
-  if(t){ touchX=t.clientX/W;touchDown=true; }
+  touchSide=sideFrom(t.clientX);
+  if(t){ touchX=t.clientX/W;touchY=t.clientY/H;touchDown=true;touchStartT=performance.now(); }
   if(e.cancelable)e.preventDefault();
 }
 function onMove(e){ if(!gameActive())return;
   var t=e.touches?e.touches[0]:e; if(t){touchSide=sideFrom(t.clientX);touchX=t.clientX/W;}
   if(e.cancelable)e.preventDefault(); }
-function onEnd(){ touchSide=0;touchDown=false; }
+function onEnd(){
+  touchSide=0;touchDown=false;
+  if(touchStartT&&performance.now()-touchStartT<180){
+    tapPulse=1;tapX=touchX;tapY=touchY;
+  }
+  touchStartT=0;
+}
 ['touchstart','touchmove'].forEach(function(ev){document.addEventListener(ev,onStart,{passive:false});});
 document.addEventListener('touchend',onEnd,{passive:false});
 document.addEventListener('touchcancel',onEnd,{passive:false});
@@ -1366,14 +1373,17 @@ GAME[2]=function(){return{
       console.log('NET CAST: netCd='+s.netCd+' creatures='+s.creatures.length+' mode='+s.mode);
 
       if(s.netCd<=0){
-        var netRadius=s.cardNet?0.12*W:0.085*W;
-        var caught=[];
-
+  var netRadius=s.cardNet?0.14*W:0.11*W;
+  var caught=[];
+  var netX=tapX*W, netY=dog.y;   /* 网心：触点x + 狗当前深度 */
         for(var n=0;n<s.creatures.length;n++){
           var target=s.creatures[n];
 
           if(target.dead||target.jelly||target.eel){
-            continue;
+            continue;  if(caught.length>1){
+    fxFloat(W/2,H*0.32,'🎣 一网 '+caught.length+' 条！','#7EE8B8');
+  }
+
           }
 
           var targetPos=creaturePosition(target);
@@ -1393,9 +1403,7 @@ GAME[2]=function(){return{
          */
         s.netCd=1.3;
 
-        FX.rings.push({
-          x:dog.x,
-          y:dog.y,
+        FX.rings.push({x:netX,y:netY,
           t:0,
           life:0.3,
           size:14,
@@ -1520,7 +1528,7 @@ GAME[2]=function(){return{
         true,
         null,
         '💰 '+stateObj.score+' / '+goal+
-        ' · 第 '+stateObj.trip+'/'+stateObj.trips+' 趟 · 按住下潜'
+        ' · ❤'+hearts+' · 趟'+stateObj.trip+'/'+stateObj.trips
       );
     }
 
@@ -1567,7 +1575,7 @@ GAME[2]=function(){return{
         true,
         null,
         '💰 '+stateObj.score+' / '+goal+
-        ' · 第 '+stateObj.trip+'/'+stateObj.trips+' 趟 · 按住下潜'
+        ' · ❤'+hearts+' · 趟'+stateObj.trip+'/'+stateObj.trips
       );
     }
 

@@ -1095,7 +1095,7 @@ function makeCreatures2(){
         [{e:'🐡',v:3,jelly:false,eel:false},{e:'🪼',v:0,jelly:true,eel:false}],
         [{e:'🪼',v:0,jelly:true,eel:false},{e:'🐠',v:6,jelly:false,eel:false}],
         [{e:'🪼',v:0,jelly:true,eel:false},{e:'🐙',v:7,jelly:false,eel:false},{e:'🐍',v:0,jelly:false,eel:true}],
-        [{e:'🐙',v:7,jelly:false,eel:false},{e:'🌙',v:12,jelly:false,eel:true}],
+        [{e:'🐙',v:7,jelly:false,eel:false},{e:'🐍',v:0,jelly:false,eel:true}],
         [{e:'🌙',v:14,jelly:false,eel:false},{e:'🌙',v:12,jelly:false,eel:false},{e:'💎',v:40,jelly:false,eel:false,pearl:true}]
       ];
 
@@ -1160,7 +1160,7 @@ GAME[2]=function(){return{
   init:function(s){
     var cfg=diffCfg();
 
-    s.trips=3;
+    s.trips=diffCfg().d2trips;
     s.trip=1;
     s.score=0;
     s.fi=0;
@@ -1200,7 +1200,7 @@ GAME[2]=function(){return{
       t:'老板：「听说 280 米下有枚「约定之珠」，能定一辈子。」按住下潜、松手上浮，回到水面鱼获就落袋！快速点一下撒网。'
     });
 
-    s.creatures=makeCreatures2();
+    
   },
 
   update:function(dt,t,s){
@@ -1365,9 +1365,8 @@ GAME[2]=function(){return{
       tapPulse=0;
 
       if(s.netCd<=0){
-        var netRadius=s.cardNet?0.10*W:0.062*W;
-        var best=null;
-        var bestValue=-Infinity;
+        var netRadius=s.cardNet?0.12*W:0.085*W;
+        var caught=[];
 
         for(var n=0;n<s.creatures.length;n++){
           var target=s.creatures[n];
@@ -1380,14 +1379,10 @@ GAME[2]=function(){return{
           var netDistance=distance(
             dog.x,dog.y,
             targetPos.x,targetPos.y
-          );
+          ) - 12;   /* 减鱼身半径：视觉罩住即判定 */
 
-          /*
-           * 与绘制的网圈完全相同：圆形像素距离。
-           */
-          if(netDistance<=netRadius&&target.v>bestValue){
-            best=target;
-            bestValue=target.v;
+          if(netDistance<=netRadius){
+            caught.push(target);
           }
         }
 
@@ -1406,29 +1401,30 @@ GAME[2]=function(){return{
           kind:'arc'
         });
 
-        if(best){
-          best.dead=true;
-
-          if(best.pearl){
-            /*
-             * 珍珠只进入 score，不进入 bag。
-             */
-            s.score+=40;
-            totalScore+=40;
+        if(caught.length){
+          var total=0,pearlGot=false;
+          for(var ci=0;ci<caught.length;ci++){
+            caught[ci].dead=true;
+            if(caught[ci].pearl){ pearlGot=true; s.score+=40; totalScore+=40; }
+            else { total+=caught[ci].v; }
+          }
+          s.bag+=total;
+          if(pearlGot){
             s.pearl=true;
-
-            fxHeavy(W/2,H*0.35,'约定之珠！！','#ffd166');
-          }else{
-            var gain=best.v;
-
-            if(s.depth>150&&s.o2<20){
-              gain*=2;
-              fxHeavy(dog.x,H/2-30,'险中取胜！+'+gain,'#ffd166');
-            }else{
-              fxLight(dog.x,H/2,'+'+gain,'#7ee08a');
-            }
-
-            s.bag+=gain;
+            fxHeavy(W/2,H*0.35,'约定之珠！！+40','#ffd166');
+          }
+          /* 险中取胜：深水低氧时整网 ×2 */
+          if(s.depth>150&&s.o2<20&&total>0){
+            total=Math.round(total*2);
+            fxHeavy(W/2,H*0.3,'险中取胜！整网 ×2','#ffd166');
+          }
+          if(total>0){
+            s.bag+=total;
+            fxFloat(s.px*W,diverY(s)-18,'+'+total,'#FFE66D');
+            fxSparkle(s.px*W,diverY(s)-6,4);
+          }
+          if(caught.length>1){
+            fxFloat(W/2,H*0.32,'🎣 一网 '+caught.length+' 条！','#7EE8B8');
           }
         }
       }
@@ -1596,7 +1592,7 @@ GAME[2]=function(){return{
       }else{
         failGame(
           stateObj,
-          '3 趟结束：'+stateObj.score+' / '+goal+' 分'
+          s.trips+' 趟结束：'+stateObj.score+' / '+goal+' 分'
         );
       }
     }
@@ -1715,7 +1711,7 @@ GAME[2]=function(){return{
         X.setLineDash([4,4]);
 
         X.beginPath();
-        X.arc(cx,cy,26,0,Math.PI*2);
+        X.arc(cx,cy,c.jelly?0.055*W:(c.eel?0.065*W:16),0,Math.PI*2);
         X.stroke();
 
         X.setLineDash([]);
@@ -2622,20 +2618,20 @@ var difficulty='normal';
 function diffCfg(){
   var t={
     /* 四维：局内压力 / 失误代价 / 资源稀缺 / 后期增长 */
-    easy:{d1Line:0.13,d2O2:1.4,d2Goal:85,d3Row:13,name:'轻松',
+    easy:{d1Line:0.13,d2O2:1.4,d2Goal:95,d3Row:13,name:'轻松',
       d1w:[32,34,24,10], d1unlock:[25,70],  d1burst:3.5, d1combo:5.0,
-      d2o2bot:4,  d2jelly:5,  d2rise:80,
+      d2o2bot:4,  d2jelly:5,  d2rise:80, d2trips:5,
       d3brick:function(w){return 4+Math.min(3,w);}, d3hp:function(w){return Math.ceil(w*0.7)+1;},
       d3dead:7,  d3special:0.18, d3aim:70,
       d1pushy:0.8, d2eelSpd:0.7, d3ballGain:1},
-    normal:{d1Line:0.22,d2O2:1.0,d2Goal:110,d3Row:10,name:'标准',
+    normal:{d1Line:0.22,d2O2:1.0,d2Goal:130,d3Row:10,name:'标准',
       d1w:[34,31,23,7],  d1unlock:[40,100], d1burst:1.8, d1combo:3.0,
-      d2o2bot:7,  d2jelly:8,  d2rise:68,
+      d2o2bot:7,  d2jelly:8,  d2rise:68, d2trips:4,
       d3brick:function(w){return 5+Math.min(6,w);}, d3hp:function(w){return w+Math.floor(w/2);},
       d3dead:10, d3special:0.10, d3aim:68},
-    hard:{d1Line:0.32,d2O2:0.7,d2Goal:160,d3Row:8,name:'挑战',
+    hard:{d1Line:0.32,d2O2:0.7,d2Goal:170,d3Row:8,name:'挑战',
       d1w:[46,26,18,10], d1unlock:[70,150], d1burst:0.5, d1combo:1.8,
-      d2o2bot:11, d2jelly:15, d2rise:52,
+      d2o2bot:11, d2jelly:15, d2rise:52, d2trips:3,
       d3brick:function(w){return 6+Math.min(9,w);}, d3hp:function(w){return w+Math.floor(w*1.1);},
       d3dead:18, d3special:0.04, d3aim:48,
       d1pushy:1.25, d2eelSpd:1.5, d3ballGain:0}

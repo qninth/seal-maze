@@ -1088,55 +1088,7 @@ push=Math.min(push,12);                       /* 单帧最多推开 12px，防�
 
 /* ================= 玩法B（Day2）：深潜之约 · Push Your Luck ================= */
 function diverY(s){ return (s.depth/280)*(H-120)+60; }
-GAME[2]=function(){return{
-  goalLabel:'💰 0 / 90',
-  fi:0,
-  starGoal:90,
-
-  init:function(s){
-    var cfg=diffCfg();
-
-    s.trips=3;
-    s.trip=1;
-    s.score=0;
-    s.fi=0;
-    s.done=false;
-    s.finishing=false;
-    s.finishAt=0;
-    s.tripClear=false;
-    s.dolT=0;
-
-    s.depth=0;
-    s.o2=100;
-    s.bag=0;
-    s.mode='wait';
-    s.px=0.5;
-
-    s.creatures=[];
-    s.spawnT=0;
-    s.netCd=0;
-    s.pearl=false;
-    s.hurtT=0;
-    s.rescuing=false;
-
-    /*
-     * hearts 是全局关卡状态。进入新关卡时必须重新初始化，
-     * 避免重复进入 GAME[2] 时继承上一局的生命值。
-     */
-    hearts=3;
-
-    starCount=0;
-    state.goalLabel='💰 0 / '+cfg.d2Goal+' 分';
-    hud(true,null,state.goalLabel);
-
-    s.creatures=makeCreatures();
-
-    dlg({
-      w:'note',
-      t:'老板：「听说 280 米下有枚「约定之珠」，能定一辈子。」按住下潜、松手上浮，回到水面鱼获就落袋！快速点一下撒网。'
-    });
-
-    function makeCreatures(){
+function makeCreatures2(){
       var result=[];
       var rows=[
         [{e:'🐟',v:1,jelly:false,eel:false}],
@@ -1197,7 +1149,58 @@ GAME[2]=function(){return{
       }
 
       return result;
-    }
+    
+}
+
+GAME[2]=function(){return{
+  goalLabel:'💰 0 / 90',
+  fi:0,
+  starGoal:90,
+
+  init:function(s){
+    var cfg=diffCfg();
+
+    s.trips=3;
+    s.trip=1;
+    s.score=0;
+    s.fi=0;
+    s.done=false;
+    s.finishing=false;
+    s.finishAt=0;
+    s.tripClear=false;
+    s.dolT=0;
+
+    s.depth=0;
+    s.o2=100;
+    s.bag=0;
+    s.mode='wait';
+    s.px=0.5;
+
+    s.creatures=[];
+    s.spawnT=0;
+    s.netCd=0;
+    s.pearl=false;
+    s.hurtT=0;
+    s.rescuing=false;
+
+    /*
+     * hearts 是全局关卡状态。进入新关卡时必须重新初始化，
+     * 避免重复进入 GAME[2] 时继承上一局的生命值。
+     */
+    hearts=3;
+
+    starCount=0;
+    state.goalLabel='💰 0 / '+cfg.d2Goal+' 分';
+    hud(true,null,state.goalLabel);
+
+    s.creatures=makeCreatures2();
+
+    dlg({
+      w:'note',
+      t:'老板：「听说 280 米下有枚「约定之珠」，能定一辈子。」按住下潜、松手上浮，回到水面鱼获就落袋！快速点一下撒网。'
+    });
+
+    s.creatures=makeCreatures2();
   },
 
   update:function(dt,t,s){
@@ -1480,7 +1483,7 @@ GAME[2]=function(){return{
       s.mode='wait';
       s.netCd=0;
       s.rescuing=false;
-      s.creatures=makeCreatures();
+      s.creatures=makeCreatures2();
     }
 
     function settleNormalTrip(stateObj,currentTime){
@@ -1767,6 +1770,7 @@ GAME[2]=function(){return{
         dogX,
         dogY,
         s.cardNet?0.10*W:0.062*W,
+        0,
         (1-s.netCd/1.3)*Math.PI*2
       );
       X.stroke();

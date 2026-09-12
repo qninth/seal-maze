@@ -1091,12 +1091,12 @@ function diverY(s){ return (s.depth/280)*(H-120)+60; }
 function makeCreatures2(){
       var result=[];
       var rows=[
-        [{e:'🐟',v:1,jelly:false,eel:false}],
-        [{e:'🐡',v:3,jelly:false,eel:false},{e:'🪼',v:0,jelly:true,eel:false}],
-        [{e:'🪼',v:0,jelly:true,eel:false},{e:'🐠',v:6,jelly:false,eel:false}],
-        [{e:'🪼',v:0,jelly:true,eel:false},{e:'🐙',v:7,jelly:false,eel:false},{e:'🐍',v:0,jelly:false,eel:true}],
-        [{e:'🐙',v:7,jelly:false,eel:false},{e:'🐍',v:0,jelly:false,eel:true}],
-        [{e:'🌙',v:14,jelly:false,eel:false},{e:'🌙',v:12,jelly:false,eel:false},{e:'💎',v:40,jelly:false,eel:false,pearl:true}]
+        [{e:'🐟',v:4,jelly:false,eel:false}],
+        [{e:'🐡',v:7,jelly:false,eel:false},{e:'🪼',v:0,jelly:true,eel:false}],
+        [{e:'🪼',v:0,jelly:true,eel:false},{e:'🐠',v:11,jelly:false,eel:false}],
+        [{e:'🪼',v:0,jelly:true,eel:false},{e:'🐙',v:20,jelly:false,eel:false},{e:'🐍',v:0,jelly:false,eel:true}],
+        [{e:'🐙',v:20,jelly:false,eel:false},{e:'🐍',v:0,jelly:false,eel:true}],
+        [{e:'🌙',v:42,jelly:false,eel:false},{e:'🌙',v:34,jelly:false,eel:false},{e:'💎',v:75,jelly:false,eel:false,pearl:true}]
       ];
 
       for(var d=30;d<=270;d+=22){
@@ -1129,7 +1129,7 @@ function makeCreatures2(){
 
       if(!hasFish){
         result.push({
-          e:'🐠',v:6,x:0.5,d:120,
+          e:'🐠',v:11,x:0.5,d:120,
           jelly:false,eel:false,pearl:false,vx:0,dead:false
         });
       }
@@ -1143,7 +1143,7 @@ function makeCreatures2(){
 
       if(!hasPearl){
         result.push({
-          e:'💎',v:40,x:0.35,d:265,
+          e:'💎',v:75,x:0.35,d:265,
           jelly:false,eel:false,pearl:true,vx:0,dead:false
         });
       }
@@ -1375,6 +1375,7 @@ GAME[2]=function(){return{
       if(s.netCd<=0){
   var netRadius=s.cardNet?0.14*W:0.11*W;
   var caught=[];
+        var riskCatch=false;
   var netX=tapX*W, netY=dog.y;   /* 网心：触点x + 狗当前深度 */
         for(var n=0;n<s.creatures.length;n++){
           var target=s.creatures[n];
@@ -1395,6 +1396,7 @@ GAME[2]=function(){return{
           console.log('  NETCHK '+target.e+' dist='+Math.round(netDistance)+' vs '+Math.round(netRadius));
           if(netDistance<=netRadius){
             caught.push(target);
+            if(s.depth>=135&&s.o2<=20)riskCatch=true;
           }
         }
 
@@ -2641,20 +2643,20 @@ var difficulty='normal';
 function diffCfg(){
   var t={
     /* 四维：局内压力 / 失误代价 / 资源稀缺 / 后期增长 */
-    easy:{d1Line:0.13,d2O2:1.4,d2Goal:95,d3Row:13,name:'轻松',
+    easy:{d1Line:0.13,d2O2:1.4,d2Goal:110,d3Row:13,name:'轻松',
       d1w:[32,34,24,10], d1unlock:[25,70],  d1burst:3.5, d1combo:5.0,
-      d2o2bot:4,  d2jelly:5,  d2rise:80, d2trips:5,
+      d2o2bot:4,  d2jelly:5,  d2rise:80, d2trips:6,
       d3brick:function(w){return 4+Math.min(3,w);}, d3hp:function(w){return Math.ceil(w*0.7)+1;},
       d3dead:7,  d3special:0.18, d3aim:70,
       d1pushy:0.8, d2eelSpd:0.7, d3ballGain:1},
-    normal:{d1Line:0.22,d2O2:1.0,d2Goal:130,d3Row:10,name:'标准',
+    normal:{d1Line:0.22,d2O2:1.0,d2Goal:145,d3Row:10,name:'标准',
       d1w:[34,31,23,7],  d1unlock:[40,100], d1burst:1.8, d1combo:3.0,
-      d2o2bot:7,  d2jelly:8,  d2rise:68, d2trips:4,
+      d2o2bot:7,  d2jelly:8,  d2rise:68, d2trips:5,
       d3brick:function(w){return 5+Math.min(6,w);}, d3hp:function(w){return w+Math.floor(w/2);},
       d3dead:10, d3special:0.10, d3aim:68},
-    hard:{d1Line:0.32,d2O2:0.7,d2Goal:170,d3Row:8,name:'挑战',
+    hard:{d1Line:0.32,d2O2:0.7,d2Goal:180,d3Row:8,name:'挑战',
       d1w:[46,26,18,10], d1unlock:[70,150], d1burst:0.5, d1combo:1.8,
-      d2o2bot:11, d2jelly:15, d2rise:52, d2trips:3,
+      d2o2bot:11, d2jelly:15, d2rise:52, d2trips:4,
       d3brick:function(w){return 6+Math.min(9,w);}, d3hp:function(w){return w+Math.floor(w*1.1);},
       d3dead:18, d3special:0.04, d3aim:48,
       d1pushy:1.25, d2eelSpd:1.5, d3ballGain:0}

@@ -1185,8 +1185,8 @@ GAME[2]=function(){return{
           if(Math.abs(dir)<0.15)c.x+=Math.sign(dir)*0.12*dt; } }
       c.x+=c.vx*dt/300;
       if(c.x<0.08||c.x>0.92)c.vx*=-1;
-      /* 危险判定=视觉：像素距离（与红/粉警示圈一致） */
-      var ccy=((c.d-s.depth)/280)*(H-120)+60;
+      /* 危险判定=视觉：与绘制同一公式（绝对深度→屏幕y） */
+      var ccy=(c.d/280)*(H-120)+60;
       var jR=(c.jelly?0.055*W:(c.eel?0.065*W:0));
       var pxc=c.x*W, pyc=ccy;
       var ddx=pxc-s.px*W, ddy=pyc-diverY(s);
@@ -1218,8 +1218,8 @@ GAME[2]=function(){return{
         FX.rings.push({x:s.px*W,y:diverY(s),t:0,life:0.3,size:14,col:'#90E0EF',kind:'arc'});
         var best=null,bv=-1;
         for(var n2=0;n2<s.creatures.length;n2++){ var cc=s.creatures[n2];
-          /* 判定=视觉：生物绘制 y=(cc.d-depth)/280*(H-120)+60，与狗距离用像素算 */
-          var cy2=((cc.d-s.depth)/280)*(H-120)+60;
+          /* 判定=视觉：与绘制同一公式（绝对深度→屏幕y），狗鱼像素距离 */
+          var cy2=(cc.d/280)*(H-120)+60;
           var nw2=(s.cardNet?0.10:0.062)*W;
           if(!cc.jelly&&Math.abs(cy2-diverY(s))<nw2&&Math.abs(cc.x-s.px)*W<nw2&&cc.v>bv){ bv=cc.v;best=cc; } }
         if(best){ var gain=best.v;

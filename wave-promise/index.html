@@ -1193,12 +1193,12 @@ GAME[2]=function(){return{
       if(c.jelly||c.eel){
         if(Math.hypot(ddx,ddy)<jR+14){   /* 圈半径+狗身半径14 */
           if(c.jelly){ s.hurtT=1.2;s.o2-=diffCfg().d2jelly;c.dead=true;
-            fxArcLine(s.px*W,H*0.5,'#F72585');
+            fxArcLine(s.px*W,diverY(s),'#F72585');
             fxSparkle(s.px*W,H*0.5,4);
             fxFloat(s.px*W,H*0.42,'⚡ 被蛰了！','#FFD6FF');
             fxMedium(s.px*W,H/2,'被水母蜇了！','#c792ea'); }
           else { s.bag=Math.floor(s.bag*0.7);c.dead=true;s.hurtT=1.0;
-            fxArcLine(s.px*W,H*0.5,'#E87978');
+            fxArcLine(s.px*W,diverY(s),'#E87978');
             fxFloat(s.px*W,H*0.42,'⚠ 鱼获掉了些','#F3A98F');
             fxHeavy(s.px*W,H/2,'被鳗咬！包-30%','#E87978');
             hearts--;hud(true);
@@ -1215,7 +1215,7 @@ GAME[2]=function(){return{
     if(tapPulse){ tapPulse=0;
       if(s.netCd<=0){
         /* 撒网动画：从玩家位置扩散的网圈 */
-        FX.rings.push({x:s.px*W,y:H*0.5,t:0,life:0.3,size:14,col:'#90E0EF',kind:'arc'});
+        FX.rings.push({x:s.px*W,y:diverY(s),t:0,life:0.3,size:14,col:'#90E0EF',kind:'arc'});
         var best=null,bv=-1;
         for(var n2=0;n2<s.creatures.length;n2++){ var cc=s.creatures[n2];
           /* 判定=视觉：生物绘制 y=(cc.d-depth)/280*(H-120)+60，与狗距离用像素算 */

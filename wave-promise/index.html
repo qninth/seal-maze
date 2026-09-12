@@ -927,10 +927,14 @@ GAME[1]=function(){return{
     s.overT=0;
     /* 今日鱼市行情 */
     s.market=todayMarket();
-    for(var wi=0;wi<4;wi++)SUIKA_TYPES[wi].w=s.market.w[wi];
-    /* 难度叠加权重 */
+    /* 权重：从基础快照计算（防难度乘算反复污染全局表） */
+    if(typeof SUIKA_BASE_W==='undefined'){
+      SUIKA_BASE_W=SUIKA_TYPES.map(function(t){return t.w;});
+    }
     var dw=diffCfg().d1w;
-    for(var wi2=0;wi2<4;wi2++)SUIKA_TYPES[wi2].w=Math.round(SUIKA_TYPES[wi2].w*dw[wi2]/30);
+    for(var wi=0;wi<4;wi++){
+      SUIKA_TYPES[wi].w=Math.round(SUIKA_BASE_W[wi]*s.market.w[wi]/30*dw[wi]/30);
+    }
     starCount=0;state.goalLabel='🐟 0 / 150 分';hud(true,null,state.goalLabel);
     dlg({w:'note',t:'老板娘：「海获叠得越漂亮，工钱越多！」按住拖动选位置，松手落下。同款相碰会合成大件——目标是合成海龟或珍珠贝！堆过警戒线可就砸了。'});
     fxFloat(W/2,H*0.32,'📢 今日鱼市：'+s.market.name,'#ffd166');},
@@ -1055,15 +1059,18 @@ push=Math.min(push,12);                       /* 单帧最多推开 12px，防�
     for(var lv=1;lv<=4;lv++){ if(typeCount[lv]===1&&typeCount[lv+1]){ hintType=lv+1;break; } }
     if(hintType>0&&t-(s.lastHintT||0)>6){ s.lastHintT=t;
       fxFloat(W/2,H*0.3,'再掉一颗'+SUIKA_TYPES[hintType-1].n+'就能合'+SUIKA_TYPES[hintType].n+'！','#7ec8e3'); }
-    if(!s.done&&maxType>=5){
-      if(endless){ /* 无尽：不清盘，发放过关奖励继续刷 */
+    if(!s.done&&maxType>=5&&!s.roundCleared){
+      s.roundCleared=true;   /* 一次性锁：本轮奖励只发一次 */
+      if(endless){ /* 无尽：奖励后升级目标（需合成珍珠贝），继续刷 */
         var bonus=200;s.score+=bonus;totalScore+=bonus;
         fxHeavy(W/2,H*0.4,'🌀 一轮完成 +'+bonus+'！继续刷分','#ffd166');
-        /* 目标升级：下一轮需要更高级（珍珠贝） */
         s.goalTurtle=true;
         starCount=0;state.goalLabel='🐟 '+s.score+' 分 · 无尽';
+        /* 3 秒后解锁下一轮（避免同帧重复触发） */
+        s.roundUnlockT=t+3;
       } else { s.done=true;s.dolT=t;
         fxHeavy(W/2,H*0.4,'今日大丰收！','#ffd166'); } }
+    if(s.roundCleared&&s.roundUnlockT&&t>s.roundUnlockT){ s.roundCleared=false;s.roundUnlockT=0; }
     tapPulse=0;},
   draw:function(t,s){
     drawSea(t);
@@ -1433,7 +1440,7 @@ GAME[2]=function(){return{
             if(caught[ci].pearl){ pearlGot=true; s.score+=40; totalScore+=40; }
             else { total+=caught[ci].v; }
           }
-          s.bag+=total;
+          
           if(pearlGot){
             s.pearl=true;
             fxHeavy(W/2,H*0.35,'约定之珠！！+40','#ffd166');
@@ -1921,8 +1928,12 @@ GAME[3]=function(){return{
     var n=diffCfg().d3brick(s.wave);
     var used={};
     for(var i=0;i<n;i++){
-      /* 无尽 9 波起：60% 概率本块不生成 */
-      if(endless&&s.wave>8&&Math.random()<0.6)continue;
+      /* 无尽 9 波起：60% 概率本块不生成（但保证每波至少 2 块） */
+      if(endless&&s.wave>8&&Math.random()<0.6){
+        var aliveNow=0;
+        for(var chk=0;chk<s.blocks.length;chk++){ if(!s.blocks[chk].dead)aliveNow++; }
+        if(aliveNow>=2)continue;
+      }
       var col=Math.floor(Math.random()*5);
       var tries=0;
       while(used[col]&&tries<8){ col=Math.floor(Math.random()*5);tries++; }
@@ -2457,6 +2468,7 @@ function finishWin(){
     day=nextDay;
     var nextGame=GAME[day]();state=nextGame;cur=nextGame;
     hearts=Math.min(3,hearts+1);
+    FX.rings.length=0;FX.particles.length=0;FX.floats.length=0;
     hideAll();hud(true,'♾️ 无尽 · '+DAYS[day].tag,DAYS[day].how);
     showChat([{w:'n',t:'（浪王一挥手：换岗！本轮已攒 '+totalScore+' 分）'}],{goLabel:'继续 ▸',onDone:function(){
       hideAll();cur.init(state);paused=false;

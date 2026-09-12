@@ -2699,8 +2699,13 @@ bindDiff();
 function refreshCardBtn(){
   var b=$('btnCards'); if(!b)return;
   var n=ownedCards().length;
-  b.style.display=((running||paused)&&n)?'flex':'none';
+  var inGame=(running||paused)&&cur;
+  b.style.display=(inGame&&n)?'flex':'none';
   $('cardCount').textContent=n?(' '+n):'';
+  var q=$('btnQuitGame');
+  if(q)q.style.display=inGame?'block':'none';
+  var grp=$('topBtns');
+  if(grp)grp.style.display=inGame?'flex':'none';
 }
 $('btnCards').addEventListener('click',function(){ showCards(); });
 $('btnCardsClose').addEventListener('click',function(){ hideAll();

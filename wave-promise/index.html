@@ -1163,10 +1163,15 @@ GAME[2]=function(){return{
               fxFloat(W/2,H*0.4,'🌀 一轮完成 +'+eb+'！氧气补满','#7EE8B8');
               s.o2=100;starCount=0;
               state.goalLabel='💰 '+s.score+' 分 · 无尽'; }
+            else if(s.score>=diffCfg().d2Goal){
+              /* 达标 → 走胜利结算 */
+              s.done=true;s.dolT=t;s.tripClear=true;return; }
             else {
-              /* 趟数用完：按分数结算胜负（达标=胜，否则=负） */
-              s.done=true;s.dolT=t;s.tripClear=s.score>=diffCfg().d2Goal;
-              return; } }
+              /* 未达标 → 立即失败结算（不触发 finishWin） */
+              running=false;hearts=3;
+              recordScore('day2',s.score);
+              $('failText').textContent=playerName()+' · 3 趟结束：'+s.score+' / '+diffCfg().d2Goal+' 分（差一点，再来！）';
+              show('ovFail');return; } }
         } else {
           s.o2=Math.min(100,s.o2+30);s.mode='wait';
           fxFloat(W/2,H*0.3,'空手回船 · 氧气补满','#7ec8e3');
@@ -1246,13 +1251,6 @@ GAME[2]=function(){return{
       s.bag=0;s.o2=100;s.depth=0;s.mode='wait';s.creatures=[];
     }
     /* 胜利只看分数（珍珠落袋得 40 分），抓在手里不算 */
-    /* 趟数用完未达标 → 失败结算（不是胜利） */
-    if(s.done&&!s.tripClear){
-      running=false;hearts=3;
-      recordScore('day2',s.score);
-      $('failText').textContent=playerName()+' · 3 趟结束：'+s.score+' / '+diffCfg().d2Goal+' 分（差一点，再来！）';
-      show('ovFail');return;
-    }
     if(!s.done&&s.score>=diffCfg().d2Goal){ s.done=true;s.tripClear=true;s.dolT=t;
       fxHeavy(W/2,H*0.35,'配额达成！回落水面结算','#FFD166');
       fxHeavy(W/2,H*0.3,'今日配额达成！','#ffd166'); }

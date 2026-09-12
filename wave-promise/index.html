@@ -1087,6 +1087,7 @@ push=Math.min(push,12);                       /* 单帧最多推开 12px，防�
 };};
 
 /* ================= 玩法B（Day2）：深潜之约 · Push Your Luck ================= */
+function diverY(s){ return (s.depth/280)*(H-120)+60; }
 GAME[2]=function(){return{
   goalLabel:'💰 0 / 90',fi:0,starGoal:90,
   init:function(s){
@@ -1188,7 +1189,7 @@ GAME[2]=function(){return{
       var ccy=((c.d-s.depth)/280)*(H-120)+60;
       var jR=(c.jelly?0.055*W:(c.eel?0.065*W:0));
       var pxc=c.x*W, pyc=ccy;
-      var ddx=pxc-s.px*W, ddy=pyc-py2;
+      var ddx=pxc-s.px*W, ddy=pyc-diverY(s);
       if(c.jelly||c.eel){
         if(Math.hypot(ddx,ddy)<jR+14){   /* 圈半径+狗身半径14 */
           if(c.jelly){ s.hurtT=1.2;s.o2-=diffCfg().d2jelly;c.dead=true;
@@ -1220,7 +1221,7 @@ GAME[2]=function(){return{
           /* 判定=视觉：生物绘制 y=(cc.d-depth)/280*(H-120)+60，与狗距离用像素算 */
           var cy2=((cc.d-s.depth)/280)*(H-120)+60;
           var nw2=(s.cardNet?0.10:0.062)*W;
-          if(!cc.jelly&&Math.abs(cy2-py2)<nw2&&Math.abs(cc.x-s.px)*W<nw2&&cc.v>bv){ bv=cc.v;best=cc; } }
+          if(!cc.jelly&&Math.abs(cy2-diverY(s))<nw2&&Math.abs(cc.x-s.px)*W<nw2&&cc.v>bv){ bv=cc.v;best=cc; } }
         if(best){ var gain=best.v;
           if(s.depth>150&&s.o2<20){ gain*=2;
             fxHeavy(s.px*W,H/2-30,'险中取胜！+'+gain,'#ffd166'); }
@@ -1292,7 +1293,7 @@ GAME[2]=function(){return{
         X.fillStyle=c.jelly||c.eel?'#FFE4E0':'#C9FFE4';
         X.strokeStyle='rgba(18,93,122,.82)';X.lineWidth=3;X.strokeText(label,c.x*W,cy+22);X.fillText(label,c.x*W,cy+22); }}
     X.textBaseline='alphabetic';
-    var py2=(s.depth/280)*(H-120)+60;
+    var py2=diverY(s);
     X.font='30px serif';X.textAlign='center';
     X.fillText('🐶',s.px*W,py2);
     if(s.netCd>0){ X.strokeStyle='rgba(255,209,102,.6)';X.lineWidth=2;

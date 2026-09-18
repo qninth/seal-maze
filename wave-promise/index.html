@@ -1126,7 +1126,7 @@ push=Math.min(push,12);                       /* 单帧最多推开 12px，防�
 };};
 
 /* ================= 玩法B（Day2）：深潜之约 · Push Your Luck ================= */
-function diverY(s){ return (s.depth/280)*(H-120)+60; }
+function diverY(s){ return (s.depth/280)*(H-172)+108; }
 function makeCreatures2(){
       var result=[];
       var rows=[
@@ -1506,7 +1506,7 @@ GAME[2]=function(){return{
     hud(true);
 
     function yOfDepth(depth){
-      return (depth/280)*(H-120)+60;
+      return (depth/280)*(H-172)+108;
     }
 
     function dogPosition(stateObj){
@@ -1693,7 +1693,7 @@ GAME[2]=function(){return{
     var cfg=diffCfg();
 
     function yOfDepth(depth){
-      return (depth/280)*(H-120)+60;
+      return (depth/280)*(H-172)+108;
     }
 
     function creaturePosition(c){

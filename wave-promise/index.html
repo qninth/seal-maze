@@ -61,7 +61,7 @@
   #topBtns{position:fixed;top:calc(env(safe-area-inset-top, 0px) + 4px);right:6px;z-index:56;
     display:none;flex-direction:column;gap:6px;align-items:center;}
   #hud{position:fixed;top:0;left:0;right:0;padding:calc(6px + env(safe-area-inset-top)) 56px 6px 10px;
-    display:none;justify-content:space-between;align-items:flex-start;z-index:10;pointer-events:none;gap:6px;}
+    display:none;justify-content:space-between;align-items:flex-start;z-index:10;pointer-events:none;gap:6px;flex-wrap:wrap;}
   #hud .tag{font-size:12px;font-weight:700;color:#174766;background:rgba(244,252,255,.91);
     padding:4px 9px;border-radius:12px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);
     border:2px solid rgba(48,139,176,.86);box-shadow:inset 0 0 0 1.5px #fff,0 4px 0 rgba(35,124,159,.34),0 8px 14px rgba(46,136,172,.14);
@@ -69,11 +69,11 @@
   #hearts{font-size:14px;letter-spacing:1px;white-space:nowrap;flex:none;padding:5px 4px!important;}
   #hud .tag{flex:none;max-width:40vw;line-height:1.4;}
   #goal{font-size:12.5px;font-weight:700;color:#76531f;background:rgba(255,247,210,.94);padding:6px 13px;
-    border-radius:14px;white-space:nowrap;flex:none;max-width:36vw;overflow:hidden;text-overflow:ellipsis;
+    border-radius:14px;white-space:normal;flex:none;max-width:100%;line-height:1.4;overflow:visible;
     backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:2px solid #d99b48;
     box-shadow:inset 0 0 0 1.5px #fff,0 4px 0 rgba(186,116,46,.32),0 8px 14px rgba(199,139,57,.14);
     text-shadow:0 1px 0 #fff;}
-  #hud #goal{max-width:36vw;}
+  #hud #goal{max-width:100%;flex-basis:100%;order:9;}
   #dlg{position:fixed;left:0;right:0;bottom:0;z-index:15;display:none;padding:10px 14px calc(14px + env(safe-area-inset-bottom));}
   #dlgBox{max-width:520px;margin:0 auto;}
   /* 聊天气泡 */
@@ -116,7 +116,7 @@
   @media (max-width: 379px){
     #hud{padding-right:52px;}
     #hud .tag{font-size:11px;padding:4px 8px;}
-    #goal{font-size:10px;max-width:44vw;}
+    #goal{font-size:10px;}
     #hearts{font-size:12px;}
   }
 </style>
@@ -999,7 +999,7 @@ GAME[1]=function(){return{
           /* 推挤：用原始像素单位向量（归一化 dist 会导致 dist→0 时方向爆炸） */
           var hyp=Math.hypot(dx,dy)||0.01;
           var nx=dx/hyp, ny=dy/hyp;
-          var push=(min-dist)*Math.min(arx,ary)*0.5;   /* 归一化差 × 平均半径 = 像素重叠量 */
+          var push=(1-dist)*Math.min(arx,ary)*0.5;    /* 归一化穿透深度 × 平均半径 = 像素重叠量 */
           push*=diffCfg().d1pushy||1;
 push=Math.min(push,12);                       /* 单帧最多推开 12px，防弹飞 */
           a.x-=nx*push;a.y-=ny*push;b.x+=nx*push;b.y+=ny*push;
@@ -1260,6 +1260,16 @@ GAME[2]=function(){return{
      * touchDown 开始新一趟下潜。
      */
     if(s.mode==='wait'){
+      /*
+       * V9.20 提前结算：剧情/纯游戏模式分数已落袋达标（score>=goal）时，
+       * 回船后不再强迫打满趟数——直接收工结算。
+       * 无尽模式例外：必须打满趟数才换岗。
+       * 深潜/上浮中途不打断（黄金矿工式玩法，半途消失很突兀）。
+       */
+      if(!endless&&s.trip<=s.trips&&s.score>=goal){
+        finishTripSet(s,t);
+        return;
+      }
       if(touchDown){
         s.mode='dive';
       }
@@ -1476,6 +1486,7 @@ GAME[2]=function(){return{
       true,
       null,
       '💰 '+s.score+'/'+goal+
+      ' · 趟'+s.trip+'/'+s.trips+
       ' · O₂ '+Math.max(0,Math.floor(s.o2))+'%'+
       ' · 包 '+s.bag
     );
@@ -1526,6 +1537,14 @@ GAME[2]=function(){return{
           H*0.3,
           '落袋为安 +'+banked,
           '#ffd166'
+        );
+      }else if(stateObj.score>=goal&&!endless){
+        /* V9.20：分数早已达标、空手下船收工——不再嘲讽"空手回船" */
+        fxFloat(
+          W/2,
+          H*0.3,
+          '收工！',
+          '#7EE8B8'
         );
       }else{
         fxFloat(
@@ -1615,10 +1634,15 @@ GAME[2]=function(){return{
         stateObj.dolT=currentTime;
         stateObj.finishAt=currentTime+1.2;
 
+        /*
+         * V9.20 两条结算路线区分文案：
+         * 提前收工 = 剧情中途达标直接走；打满收工 = 趟数用完收官。
+         */
+        var early=(stateObj.trip<=stateObj.trips&&!endless);
         fxHeavy(
           W/2,
           H*0.35,
-          '配额达成！',
+          early?'配额达成！提前收工 🎉':'配额达成！任务完成 🎉',
           '#FFD166'
         );
       }else{
@@ -1643,6 +1667,12 @@ GAME[2]=function(){return{
 
       show('ovFail');
     }
+  },
+
+  /* V9.20：供测试脚本直达 D2 内部状态（非运行时逻辑依赖） */
+  _dbg:function(s){
+    return {trip:s.trip,trips:s.trips,score:s.score,bag:s.bag,
+      goal:diffCfg().d2Goal,o2:s.o2,mode:s.mode,done:s.done};
   },
 
   draw:function(t,s){
@@ -2805,7 +2835,7 @@ function loop(now){
 }
 
 /* 调试钩子 */
-window._dbg={ get:function(){return {day:day,hearts:hearts,starCount:starCount,starGoal:starGoal,running:running,paused:paused};},
+window._dbg={ get:function(){return {day:day,hearts:hearts,starCount:starCount,starGoal:starGoal,running:running,paused:paused,d2:(cur&&cur._dbg)?cur._dbg(state):null};},
   state:function(){ return {phase:state.phase,px:state.px,tilt:state.tilt,tiltV:state.tiltV,wavePhase:state.wavePhase,waveDir:state.waveDir,magnetR:state.magnetR,periods:state.periods,pocket:state.pocket,gateIdx:state.gateIdx,schoolIdx:state.schoolIdx,schools:state.schools,
     dist:state.dist,stars:state.stars,obs:state.obs,star:starCount}; },
   win:function(){ if(running)finishWin(); },

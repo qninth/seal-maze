@@ -68,12 +68,18 @@
     text-shadow:0 1px 0 #fff;}
   #hearts{font-size:14px;letter-spacing:1px;white-space:nowrap;flex:none;padding:5px 4px!important;}
   #hud .tag{flex:none;max-width:40vw;line-height:1.4;}
-  #goal{font-size:12.5px;font-weight:700;color:#76531f;background:rgba(255,247,210,.94);padding:6px 13px;
-    border-radius:14px;white-space:normal;flex:none;max-width:100%;line-height:1.4;overflow:visible;
-    backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border:2px solid #d99b48;
-    box-shadow:inset 0 0 0 1.5px #fff,0 4px 0 rgba(186,116,46,.32),0 8px 14px rgba(199,139,57,.14);
+  /* V9.21 HUD 轻量小卡：第二行左(分数+趟数)右(O2+包)分布，中央留空给小狗 */
+  #hud .stat{font-size:11.5px;font-weight:700;padding:4px 10px;border-radius:12px;flex:none;
+    white-space:nowrap;order:9;background:rgba(247,252,255,.88);color:#174c6b;
+    border:1.5px solid rgba(255,255,255,.92);
+    box-shadow:0 2px 0 rgba(39,111,145,.22),inset 0 0 0 1px rgba(91,184,232,.25);
     text-shadow:0 1px 0 #fff;}
-  #hud #goal{max-width:100%;flex-basis:100%;order:9;}
+  #hud #gScore{color:#76531f;border-color:#e6bd62;order:8;}
+  #hud #gO2{color:#167eaa;order:9;}
+  #hud #gO2.warn{color:#b06a1e;border-color:#f2c28a;background:rgba(255,243,224,.9);}
+  #hud #gO2.danger{color:#a83a3a;border-color:#eda3a3;background:rgba(255,235,235,.92);}
+  #hud #gBag{order:10;}
+  #hud #goal{display:none;}
   #dlg{position:fixed;left:0;right:0;bottom:0;z-index:15;display:none;padding:10px 14px calc(14px + env(safe-area-inset-bottom));}
   #dlgBox{max-width:520px;margin:0 auto;}
   /* 聊天气泡 */
@@ -116,7 +122,7 @@
   @media (max-width: 379px){
     #hud{padding-right:52px;}
     #hud .tag{font-size:11px;padding:4px 8px;}
-    #goal{font-size:10px;}
+    #hud .stat{font-size:10px;padding:3px 8px;}
     #hearts{font-size:12px;}
   }
 </style>
@@ -127,7 +133,10 @@
 <div id="hud">
   <span class="tag" id="dayLabel"></span>
   <span class="tag" id="hearts"></span>
-  <span class="tag" id="goal"></span>
+  <span class="tag" id="gScore"></span>
+  <span class="tag" id="gO2"></span>
+  <span class="tag" id="gBag"></span>
+  <span class="tag" id="goal" style="display:none"></span>
 </div>
 
 <div id="dlg"><div id="dlgBox"></div></div>
@@ -444,6 +453,16 @@ function hud(on,label,goalText2){
   $('hud').style.display=on?'flex':'none';
   if(label)$('dayLabel').textContent=label;
   if(goalText2)$('goal').textContent=goalText2;
+  /* V9.21：D2 帧内数据分流到轻量小卡（gScore/gO2/gBag），goal 胶囊只供其他关文本备用 */
+  if(typeof hud._d2==='object'&&hud._d2){
+    var d=hud._d2;
+    $('gScore').textContent='💰 '+d.score+'/'+d.goal+' · 趟'+d.trip+'/'+d.trips;
+    $('gBag').textContent='包 '+d.bag;
+    var o2el=$('gO2');
+    o2el.textContent='O₂ '+Math.max(0,Math.floor(d.o2))+'%';
+    o2el.classList.toggle('warn',d.o2<30&&d.o2>=15);
+    o2el.classList.toggle('danger',d.o2<15);
+  }
   if(day===2||endless){
     $('hearts').style.display='inline-block';
     var hn=Math.min(hearts,3);
@@ -935,7 +954,7 @@ GAME[1]=function(){return{
     for(var wi=0;wi<4;wi++){
       SUIKA_TYPES[wi].w=Math.round(SUIKA_BASE_W[wi]*s.market.w[wi]/30*dw[wi]/30);
     }
-    starCount=0;state.goalLabel='🐟 0 / 150 分';hud(true,null,state.goalLabel);
+    starCount=0;state.goalLabel='🐟 0 / 150 分';hud._d2=null;hud(true,null,state.goalLabel);
     dlg({w:'note',t:'老板娘：「海获叠得越漂亮，工钱越多！」按住拖动选位置，松手落下。同款相碰会合成大件——目标是合成海龟或珍珠贝！堆过警戒线可就砸了。'});
     fxFloat(W/2,H*0.32,'📢 今日鱼市：'+s.market.name,'#ffd166');},
   update:function(dt,t,s){
@@ -1211,6 +1230,7 @@ GAME[2]=function(){return{
 
     starCount=0;
     state.goalLabel='💰 0 / '+cfg.d2Goal+' 分';
+    hud._d2=null;
     hud(true,null,state.goalLabel);
 
     s.creatures=makeCreatures2();
@@ -1482,14 +1502,8 @@ GAME[2]=function(){return{
       return;
     }
 
-    hud(
-      true,
-      null,
-      '💰 '+s.score+'/'+goal+
-      ' · 趟'+s.trip+'/'+s.trips+
-      ' · O₂ '+Math.max(0,Math.floor(s.o2))+'%'+
-      ' · 包 '+s.bag
-    );
+    hud._d2={score:s.score,goal:goal,trip:s.trip,trips:s.trips,o2:s.o2,bag:s.bag};
+    hud(true);
 
     function yOfDepth(depth){
       return (depth/280)*(H-120)+60;
@@ -1951,7 +1965,7 @@ GAME[3]=function(){return{
     s.blocks=[];s.bumpers=[];s.cellH=H/14;s.betweenT=0;
     s.lineY=60+10*(H/14);   /* 沙滩线像素位置：判定=绘制，同一来源 */
     this.spawnWave(s);
-    starCount=0;state.goalLabel=endless?'♾️ 无尽 · 第 1 波':'🎯 第 1 / 8 波';hud(true,null,state.goalLabel);
+    starCount=0;state.goalLabel=endless?'♾️ 无尽 · 第 1 波':'🎯 第 1 / 8 波';hud._d2=null;hud(true,null,state.goalLabel);
     dlg({w:'note',t:'老板：「帮我打椰子招揽客人，赢满 8 波，摊位分你一成！」按住拖动瞄准（虚线是弹道），松手发射。方块每轮下压一格——压到沙滩就完了！'});},
   spawnWave:function(s){
     /* 更多砖（6-10 块）但随机留空列 + 圆形障碍增加随机反弹 */

@@ -222,7 +222,7 @@
 <div class="ov" id="ovCover">
   <img class="pic" id="coverPic" alt="">
   <h1>浪的约定</h1>
-  <p class="sub">晨市堆堆乐 · 深潜之约 · 夜市弹珠摊<br>一个关于海、打工与约定的狗狗夏日物语<br><span style="font-size:10px;opacity:.55;">v9.3</span></p>
+  <p class="sub">晨市堆堆乐 · 深潜之约 · 夜市弹珠摊<br>一个关于海、打工与约定的狗狗夏日物语<br><span id="verTag" style="font-size:10px;opacity:0;transition:opacity .4s;">v9.8</span></p>
   <button class="btn" id="btnStart">🌊 开始旅程</button>
   <button class="btn" id="btnResume" style="display:none;background:#bdeefa;color:#174766;">▶️ 继续上次进度</button>
   <button class="btn ghost" id="btnStory" style="display:none;margin-top:10px;">📖 剧情模式 · 只看故事</button>
@@ -319,6 +319,47 @@
       ks.forEach(function(k){ localStorage.removeItem(k); });
       dropParam(); location.reload();
     });
+  }catch(e){}
+})();
+
+/* V9.8 版本号隐藏：双击或长按 600ms 显示，3 秒后淡出 */
+(function(){
+  try{
+    var tag=document.getElementById('verTag');
+    if(!tag)return;
+    var hideTimer=0,pressTimer=0,lastTap=0;
+    function showTag(){
+      if(hideTimer)clearTimeout(hideTimer);
+      tag.style.opacity='1';
+      hideTimer=setTimeout(function(){ tag.style.opacity='0'; hideTimer=0; },3000);
+    }
+    function startPress(){
+      if(pressTimer)clearTimeout(pressTimer);
+      pressTimer=setTimeout(function(){ pressTimer=0; showTag(); },600);
+    }
+    function endPress(){
+      if(pressTimer){ clearTimeout(pressTimer); pressTimer=0; }
+    }
+    tag.addEventListener('dblclick',function(e){
+      if(e.cancelable)e.preventDefault();
+      showTag();
+    });
+    tag.addEventListener('mousedown',startPress);
+    tag.addEventListener('mouseup',endPress);
+    tag.addEventListener('mouseleave',endPress);
+    tag.addEventListener('touchstart',function(e){
+      if(e.cancelable)e.preventDefault();
+      startPress();
+    },{passive:false});
+    tag.addEventListener('touchend',function(e){
+      if(e.cancelable)e.preventDefault();
+      endPress();
+      var now=Date.now();
+      if(now-lastTap<350)showTag();
+      lastTap=now;
+    },{passive:false});
+    tag.addEventListener('touchcancel',endPress);
+    tag.addEventListener('contextmenu',function(e){ if(e.cancelable)e.preventDefault(); });
   }catch(e){}
 })();
 

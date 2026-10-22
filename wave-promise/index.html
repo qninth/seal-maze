@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Wave Promise V9.3 build 1789134473 -->
+<!-- Wave Promise V9.4 gift-puzzle build 1792632391 -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -266,8 +266,22 @@
 <div class="ov hidden" id="ovEnd">
   <img class="pic" id="endPic" alt="">
   <p class="story" style="margin-top:18px;">🌊 《浪的约定》· 完<br><span style="opacity:.7;font-size:13px">两条航迹，并成了一条。</span></p>
+  <button class="btn" id="btnGift" style="background:linear-gradient(180deg,#dff2ff,#a8dcf5);color:#14506e;border-color:#4f9fc0;box-shadow:inset 0 0 0 1.5px rgba(255,255,255,.96),0 5px 0 #6aa8c9,0 10px 22px rgba(80,150,190,.25);">🐚 瓶中信</button>
   <button class="btn" id="btnReplay">🔄 再玩一次</button>
   <button class="btn ghost" id="btnHome2" style="margin-top:10px;">🏠 回到主菜单</button>
+</div>
+
+<!-- V9.4 彩蛋：瓶中信 -->
+<div class="ov hidden" id="ovGift">
+  <div class="story" style="max-width:440px;width:100%;text-align:left;padding:18px 20px;">
+    <div style="font-size:12.5px;opacity:.65;margin-bottom:10px;">🐚 瓶中信 · 潮碑内层古潮文残页（译）</div>
+    <div id="giftPoem"></div>
+    <div id="giftHint" style="display:none;margin-top:12px;font-size:12.5px;line-height:1.9;color:#7a5b2e;background:rgba(255,248,220,.92);border:1.5px dashed #dfa85a;border-radius:12px;padding:9px 12px;"></div>
+  </div>
+  <div style="display:flex;gap:10px;">
+    <button class="btn ghost" id="btnGiftHint">✍️ 译者批注</button>
+    <button class="btn" id="btnGiftBack">回结局页</button>
+  </div>
 </div>
 
 <script>
@@ -434,7 +448,7 @@ var day=0,hearts=3,starCount=0,starGoal=0;
 var running=false,paused=false,raf=0,lastT=0;
 var memories=[],state={};
 
-function show(id){ ['ovCover','ovChat','ovFail','ovEnd','ovSelect','ovBoard','ovCards'].forEach(function(o){
+function show(id){ ['ovCover','ovChat','ovFail','ovEnd','ovSelect','ovBoard','ovCards','ovGift'].forEach(function(o){
   var el=$(o);
   var was=el.classList.contains('hidden');
   el.classList.toggle('hidden',o!==id);
@@ -2401,8 +2415,50 @@ var ENDINGS=[
   [{w:'n',t:'（最小的弟妹把贝壳贴到耳边。里面传来鲸群远去的长鸣。）'},
    {w:'b',t:'大海也会把小东西送回家。'},
    {w:'n',t:'（碎掉的工牌边，一枚没登记的小贝壳轻轻发亮。）'},
-   {w:'note',t:'真正的礼物藏在【彩蛋位置】。去那里找漂流瓶，再输入瓶中暗号。'}]
+   {w:'n',t:'（碎掉的工牌边，一枚没登记的小贝壳轻轻发亮。）'},
+   {w:'n',t:'（贝壳内侧，有一行没被潮水磨掉的小字。）'},
+   {w:'note',t:'潮退之后，礁石上多了一枚漂流瓶。它好像一直在等你。——结局页可以拾取「🐚 瓶中信」。'}]
 ];
+
+/* ============ V9.4 彩蛋：瓶中信藏头诗（谜底：书在架上等） ============ */
+var GIFT_POEM=[
+  '书页如潮一层层，',
+  '在灯下排成小小的堤。',
+  '架子上，鲸群游过的那格，',
+  '上有微尘替我们守着约。',
+  '等一只手来，把故事领回家。'
+];
+var giftHintN=0;
+function renderPoem(hl){
+  var box=$('giftPoem');box.innerHTML='';
+  GIFT_POEM.forEach(function(line){
+    var d=document.createElement('div');
+    d.style.cssText='margin:7px 0;font-size:15.5px;line-height:1.95;letter-spacing:1px;color:#174766;';
+    if(hl){
+      var fc=document.createElement('span');
+      fc.textContent=line.charAt(0);
+      fc.style.cssText='display:inline-block;min-width:31px;padding:2px 5px;margin-right:9px;text-align:center;'+
+        'background:rgba(91,184,232,.18);border:1.5px solid #3d98bd;border-radius:9px;color:#126b83;font-weight:700;';
+      d.appendChild(fc);
+      d.appendChild(document.createTextNode(line.slice(1)));
+    } else { d.textContent=line; }
+    box.appendChild(d);
+  });
+}
+$('btnGift').addEventListener('click',function(){
+  giftHintN=0;renderPoem(false);
+  $('giftHint').style.display='none';
+  show('ovGift');
+});
+$('btnGiftHint').addEventListener('click',function(){
+  giftHintN++;
+  var el=$('giftHint');
+  if(giftHintN===1){ el.textContent='✍️ 译者批注 1/2：这份译稿遵古法「先立骨，后填肉」——每句起首一字，才是真正的正文。'; }
+  else if(giftHintN===2){ el.textContent='✍️ 译者批注 2/2：把每句第一个字竖着连起来读——是一句像约定一样短的话。'; renderPoem(true); }
+  else { el.textContent='✍️ 译者批注（完）：答案就在纸上。去找那本书吧 📖'; }
+  el.style.display='block';
+});
+$('btnGiftBack').addEventListener('click',function(){ show('ovEnd'); });
 
 /* ================= 流程控制 ================= */
 var cur=null,storyMode=false,arcade=false;

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Wave Promise V9.6.3 reset-confirm build 1792641190 -->
+<!-- Wave Promise V9.8.1 overlap-fix build 1792648881 -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -2092,6 +2092,15 @@ GAME[3]=function(){return{
     var MAX_PER_ROW=3;
     var maxRows=Math.max(1,Math.ceil(n/MAX_PER_ROW));
     var cell={},rowN={},placed=0;
+    /* V9.8.1 修复「两排砖块重叠」：把场上残存活砖占进 cell 表，
+       新砖选位时与残砖同格互斥、相邻行同列也互斥——新波永远生成在空位上 */
+    for(var oi=0;oi<s.blocks.length;oi++){ var ob=s.blocks[oi];
+      if(ob.dead)continue;
+      cell[ob.row+'|'+ob.col]=1;
+      /* 残砖上下格也标记，避免新砖与残砖上下贴成柱 */
+      cell[(ob.row+1)+'|'+ob.col]=1;
+      cell[(ob.row-1)+'|'+ob.col]=1;
+    }
     for(var i=0;i<n;i++){
       /* 无尽 9 波起：60% 概率本块不生成（但保证每波至少 2 块） */
       if(endless&&s.wave>8&&Math.random()<0.6){

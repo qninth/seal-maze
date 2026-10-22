@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Wave Promise V9.8.1 overlap-fix build 1792648881 -->
+<!-- Wave Promise V9.10.1 depth-goal build 1792672372 -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -998,13 +998,17 @@ function todayMarket(){
   return MARKET_TABLES[idx];
 }
 var SUIKA_TYPES=[
-  {n:'海螺',r:17,score:2,w:40,emoji:'🐚'},
-  {n:'蛤蜊',r:25,score:4,w:30,emoji:'🦪'},
-  {n:'螃蟹',r:34,score:8,w:20,emoji:'🦀'},
-  {n:'小黄鱼',r:42,score:16,w:4,emoji:'🐟'},
-  {n:'河豚',r:53,score:32,w:0,emoji:'🐡'},
-  {n:'海龟',r:66,score:64,w:0,emoji:'🐢'},
-  {n:'珍珠贝',r:80,score:128,w:0,emoji:'💎'}
+  {n:'海螺',r:15,score:2,w:40,emoji:'🐚'},
+  {n:'蛤蜊',r:21,score:4,w:30,emoji:'🦪'},
+  {n:'小虾',r:27,score:8,w:20,emoji:'🦐'},
+  {n:'螃蟹',r:33,score:16,w:4,emoji:'🦀'},
+  {n:'章鱼',r:39,score:32,w:0,emoji:'🐙'},
+  {n:'小黄鱼',r:45,score:64,w:0,emoji:'🐟'},
+  {n:'河豚',r:52,score:128,w:0,emoji:'🐡'},
+  {n:'海星',r:59,score:256,w:0,emoji:'⭐'},
+  {n:'海龟',r:66,score:512,w:0,emoji:'🐢'},
+  {n:'鲸鱼',r:74,score:1024,w:0,emoji:'🐋'},
+  {n:'珍珠贝',r:82,score:2048,w:0,emoji:'💎'}
 ];
 function pickType(unlockMax){
   var pool=[],tw=0;
@@ -1029,13 +1033,17 @@ function todayMarket(){
   return MARKET_TABLES[idx];
 }
 var SUIKA_TYPES=[
-  {n:'海螺',r:17,score:2,w:40,emoji:'🐚'},
-  {n:'蛤蜊',r:25,score:4,w:30,emoji:'🦪'},
-  {n:'螃蟹',r:34,score:8,w:20,emoji:'🦀'},
-  {n:'小黄鱼',r:42,score:16,w:4,emoji:'🐟'},
-  {n:'河豚',r:53,score:32,w:0,emoji:'🐡'},
-  {n:'海龟',r:66,score:64,w:0,emoji:'🐢'},
-  {n:'珍珠贝',r:80,score:128,w:0,emoji:'💎'}
+  {n:'海螺',r:15,score:2,w:40,emoji:'🐚'},
+  {n:'蛤蜊',r:21,score:4,w:30,emoji:'🦪'},
+  {n:'小虾',r:27,score:8,w:20,emoji:'🦐'},
+  {n:'螃蟹',r:33,score:16,w:4,emoji:'🦀'},
+  {n:'章鱼',r:39,score:32,w:0,emoji:'🐙'},
+  {n:'小黄鱼',r:45,score:64,w:0,emoji:'🐟'},
+  {n:'河豚',r:52,score:128,w:0,emoji:'🐡'},
+  {n:'海星',r:59,score:256,w:0,emoji:'⭐'},
+  {n:'海龟',r:66,score:512,w:0,emoji:'🐢'},
+  {n:'鲸鱼',r:74,score:1024,w:0,emoji:'🐋'},
+  {n:'珍珠贝',r:82,score:2048,w:0,emoji:'💎'}
 ];
 function pickType(unlockMax,anti){
   var pool=[],weights=[],tw=0;
@@ -1043,7 +1051,10 @@ function pickType(unlockMax,anti){
     if(t.w>0){
       /* 过度捕捞税：只在本函数内乘独立因子，绝不回写 SUIKA_TYPES 快照 */
       var w=t.w;
-      if(anti&&i===anti.type)w*=Math.pow(0.45,anti.n||0);
+      if(anti){
+        if(i===anti.type)w*=Math.pow(0.28,anti.n||0);          /* 当前连放种：重税 */
+        else if(i===anti.prevType&&anti.total>3)w*=Math.pow(0.5,anti.n||1); /* 刚捞薄的邻种：半税 */
+      }
       pool.push(i);weights.push(w);tw+=w;
     } }
   var r=Math.random()*tw;
@@ -1052,10 +1063,10 @@ function pickType(unlockMax,anti){
   return pool[0];
 }
 GAME[1]=function(){return{
-  goalLabel:'🐟 0 / 150',fi:0,starGoal:150,
+  goalLabel:'🎯 合成目标',fi:0,starGoal:0,
   init:function(s){
     s.items=[];s.score=0;s.fi=0;s.done=false;s.dolT=0;
-    s.antiSpam={type:-1,n:0,warned:false};s.heat={x:-1,n:0};s.lastDropT=performance.now();
+    s.antiSpam={type:-1,n:0,total:0,prevType:-1,warned:false};s.heat={x:-1,n:0};s.lastDropT=performance.now();
     s.cur=pickType(1,s.antiSpam);s.next=pickType(1,s.antiSpam);s.cool=0;s.curX=0.5;
     s.unlockMax=1;s.startT=performance.now();
     s.basketL=W*0.05;s.basketR=W*0.95;s.lineY=H*diffCfg().d1Line;
@@ -1070,8 +1081,9 @@ GAME[1]=function(){return{
     for(var wi=0;wi<4;wi++){
       SUIKA_TYPES[wi].w=Math.round(SUIKA_BASE_W[wi]*s.market.w[wi]/30*dw[wi]/30);
     }
-    starCount=0;state.goalLabel='🐟 0 / 150 分';hud._d2=null;hud(true,null,state.goalLabel);
-    dlg({w:'note',t:'老板娘：「海获叠得越漂亮，工钱越多！」按住拖动选位置，松手落下。同款相碰会合成大件——目标是合成海龟或珍珠贝！堆过警戒线可就砸了。'});
+    var _gt=SUIKA_TYPES[diffCfg().d1Depth]||SUIKA_TYPES[6];
+    starCount=0;state.goalLabel='🎯 目标：合成 '+_gt.n+' '+_gt.emoji;hud._d2=null;hud(true,null,state.goalLabel);
+    dlg({w:'note',t:'老板娘：「海获叠得越漂亮，工钱越多！」按住拖动选位置，松手落下。同款相碰会合成大件——目标：合成到老板娘要的那一味！单押一种可不够。堆过警戒线可就砸了。'});
     fxFloat(W/2,H*0.32,'📢 今日鱼市：'+s.market.name,'#ffd166');},
   update:function(dt,t,s){
     if(s.done&&t-s.dolT>1.2){ finishWin();return; }
@@ -1089,20 +1101,23 @@ GAME[1]=function(){return{
     if(touchDown&&s.cool<=0){ s.curX=touchX; s.holding=true; }
     if(!touchDown&&s.holding&&s.cool<=0){
       /* 松手落下 */
-      if(!s.antiSpam)s.antiSpam={type:-1,n:0,warned:false};
+      if(!s.antiSpam)s.antiSpam={type:-1,n:0,total:0,prevType:-1,warned:false};
       if(!s.heat)s.heat={x:-1,n:0};
       var baseX=(s.curX||0.5);
       /* 落点漂移：同点连放累积热度，抖动只改实际入篮 x，不动准星 s.curX */
       if(Math.abs(baseX-s.heat.x)<0.06)s.heat.n++;
       else s.heat={x:baseX,n:0};
-      var drift=(Math.random()-0.5)*Math.min(0.12,(s.heat.n||0)*0.02);
+      var drift=(Math.random()-0.5)*Math.min(0.18,(s.heat.n||0)*0.03);
       var dropX=baseX+drift;
       var T=SUIKA_TYPES[s.cur];
       s.items.push({type:s.cur,x:dropX*W,y:H*0.1,r:T.r,vx:0,vy:0,dead:false});
-      s.holding=false;s.cool=0.35;
+      s.holding=false;
+      /* V9.9.4：同点高频连放 → 收网冷却惩罚（heat.n>=4 起步，封顶 3 倍） */
+      s.cool=(s.heat.n||0)>=4 ? Math.min(0.35*3, 0.35+(s.heat.n-3)*0.18) : 0.35;
       /* 过度捕捞税：连续同种计数，换种即重置；第 3 连轻提示一次 */
-      if(s.cur===s.antiSpam.type)s.antiSpam.n++;
-      else s.antiSpam={type:s.cur,n:0,warned:false};
+      if(s.cur===s.antiSpam.type){ s.antiSpam.n++; }
+      else { s.antiSpam.prevType=s.antiSpam.type; s.antiSpam.type=s.cur;
+             s.antiSpam.n=0; s.antiSpam.total=(s.antiSpam.total||0)+1; s.antiSpam.warned=false; }
       if(s.antiSpam.n>=2&&!s.antiSpam.warned){s.antiSpam.warned=true;
         fxFloat((s.curX||0.5)*W,H*0.2,SUIKA_TYPES[s.cur].n+'有点缺货了，换换口味？','#ffd166');}
       s.lastDropT=t;
@@ -1133,15 +1148,15 @@ GAME[1]=function(){return{
         if(d2>=1)continue;          /* 椭圆外：无碰撞 */
         var dist=Math.sqrt(d2)||0.01;
         if(dist>0.01){
-          if(a.type===b.type&&a.type<6){
+          if(a.type===b.type&&a.type<SUIKA_TYPES.length-1){   /* 链长自适应：末级不合成 */
             a.dead=true;b.dead=true;
             var nt=a.type+1, T=SUIKA_TYPES[nt];
             var ny0=Math.max((a.y+b.y)/2, H*0.3);   /* 合成不出筐顶 */
             s.items.push({type:nt,x:(a.x+b.x)/2,y:ny0,r:T.r,vx:0,vy:-60,dead:false});
             s.comboN=(s.comboN||0)+1;s.comboT=diffCfg().d1combo;
-            var mult=1+0.25*(s.comboN-1);
+            var mult=Math.min(2,1+0.25*(s.comboN-1));   /* 连锁倍数封顶 ×2，防单点高频连击刷分 */
             var pts=Math.round(T.score*mult);s.score+=pts;addStar(0);totalScore+=pts;
-            hud(true,null,'🐟 '+s.score+' / 150 分');
+            hud(true,null,'🐟 '+s.score+' 分 · 目标 '+((SUIKA_TYPES[diffCfg().d1Depth]||{}).n||''));
             var mx=(a.x+b.x)/2,my=(a.y+b.y)/2;
             if(nt>=5){ fxHitstop(50);fxRipple(mx,my,'#F6D77A',34);fxSparkle(mx,my,7);
               fxFloat(mx,my-26,'合成 '+T.n+'！+'+pts,'#F6D77A'); }
@@ -1199,7 +1214,7 @@ push=Math.min(push,12);                       /* 单帧最多推开 12px，防�
         paused=true;
         showChat([{w:'w',t:'行了行了，压坏的那些算你一半工钱。'}],{onDone:function(){
           paused=false;lastT=performance.now();
-          hud(true,null,'🐟 '+s.score+' / 150 分');
+          hud(true,null,'🐟 '+s.score+' 分 · 目标 '+((SUIKA_TYPES[diffCfg().d1Depth]||{}).n||''));
         }});
         return;
       }
@@ -1209,10 +1224,10 @@ push=Math.min(push,12);                       /* 单帧最多推开 12px，防�
       typeCount[s.items[q].type]=(typeCount[s.items[q].type]||0)+1; }
     /* near-miss 提示：离下一级合成只差 1 件时轻提示（每 6s 最多一次） */
     var hintType=-1;
-    for(var lv=1;lv<=4;lv++){ if(typeCount[lv]===1&&typeCount[lv+1]){ hintType=lv+1;break; } }
+    for(var lv=1;lv<SUIKA_TYPES.length-1;lv++){ if(typeCount[lv]===1&&typeCount[lv+1]){ hintType=lv+1;break; } }
     if(hintType>0&&t-(s.lastHintT||0)>6){ s.lastHintT=t;
       fxFloat(W/2,H*0.3,'再掉一颗'+SUIKA_TYPES[hintType-1].n+'就能合'+SUIKA_TYPES[hintType].n+'！','#7ec8e3'); }
-    if(!s.done&&maxType>=5&&!s.roundCleared){
+    if(!s.done&&maxType>=diffCfg().d1Depth&&!s.roundCleared){   /* V9.10：目标绑定链深度，链长翻倍才有意义 */
       s.roundCleared=true;   /* 一次性锁：本轮奖励只发一次 */
       if(endless){ /* 无尽：奖励后升级目标（需合成珍珠贝），继续刷 */
         var bonus=200;s.score+=bonus;totalScore+=bonus;
@@ -2959,18 +2974,18 @@ var difficulty='normal';
 function diffCfg(){
   var t={
     /* 四维：局内压力 / 失误代价 / 资源稀缺 / 后期增长 */
-    easy:{d1Line:0.13,d2O2:1.4,d2Goal:110,d3Row:13,name:'轻松',
+    easy:{d1Depth:6,d1Line:0.20,d2O2:1.4,d2Goal:110,d3Row:13,name:'轻松',
       d1w:[32,34,24,10], d1unlock:[25,70],  d1burst:3.5, d1combo:5.0,
       d2o2bot:4,  d2jelly:5,  d2rise:80, d2trips:6,
       d3brick:function(w){return 4+Math.min(3,w);}, d3hp:function(w){return Math.ceil(w*0.7)+1;},
       d3dead:7,  d3special:0.18, d3aim:70,
       d1pushy:0.8, d2eelSpd:0.7, d3ballGain:1},
-    normal:{d1Line:0.22,d2O2:1.0,d2Goal:145,d3Row:10,name:'标准',
+    normal:{d1Depth:7,d1Line:0.16,d2O2:1.0,d2Goal:145,d3Row:10,name:'标准',
       d1w:[34,31,23,7],  d1unlock:[40,100], d1burst:1.8, d1combo:3.0,
       d2o2bot:7,  d2jelly:8,  d2rise:68, d2trips:5,
       d3brick:function(w){return 5+Math.min(6,w);}, d3hp:function(w){return w+Math.floor(w/2);},
       d3dead:10, d3special:0.10, d3aim:68},
-    hard:{d1Line:0.32,d2O2:0.7,d2Goal:180,d3Row:8,name:'挑战',
+    hard:{d1Depth:8,d1Line:0.12,d2O2:0.7,d2Goal:180,d3Row:8,name:'挑战',
       d1w:[46,26,18,10], d1unlock:[70,150], d1burst:0.5, d1combo:1.8,
       d2o2bot:11, d2jelly:15, d2rise:52, d2trips:4,
       d3brick:function(w){return 6+Math.min(9,w);}, d3hp:function(w){return w+Math.floor(w*1.1);},

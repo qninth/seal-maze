@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Wave Promise V9.4 gift-puzzle build 1792632391 -->
+<!-- Wave Promise V9.6.1 d3-stagger build 1792639002 -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -2002,9 +2002,12 @@ GAME[3]=function(){return{
     starCount=0;state.goalLabel=endless?'♾️ 无尽 · 第 1 波':'🎯 第 1 / 8 波';hud._d2=null;hud(true,null,state.goalLabel);
     dlg({w:'note',t:'老板：「帮我打椰子招揽客人，赢满 8 波，摊位分你一成！」按住拖动瞄准（虚线是弹道），松手发射。方块每轮下压一格——压到沙滩就完了！'});},
   spawnWave:function(s){
-    /* 更多砖（6-10 块）但随机留空列 + 圆形障碍增加随机反弹 */
+    /* V9.6：按 dsh 评审重写。MAX_PER_ROW=3，多行错开，去重列，无数量钳制 */
     var n=diffCfg().d3brick(s.wave);
-    var used={};
+    var baseRow=(s.wave===1?0:-1);
+    var MAX_PER_ROW=3;
+    var maxRows=Math.max(1,Math.ceil(n/MAX_PER_ROW));
+    var cell={},rowN={},placed=0;
     for(var i=0;i<n;i++){
       /* 无尽 9 波起：60% 概率本块不生成（但保证每波至少 2 块） */
       if(endless&&s.wave>8&&Math.random()<0.6){
@@ -2012,28 +2015,66 @@ GAME[3]=function(){return{
         for(var chk=0;chk<s.blocks.length;chk++){ if(!s.blocks[chk].dead)aliveNow++; }
         if(aliveNow>=2)continue;
       }
-      var col=Math.floor(Math.random()*5);
-      var tries=0;
-      while(used[col]&&tries<8){ col=Math.floor(Math.random()*5);tries++; }
-      if(used[col])continue;  /* 保证空隙：同波不重复列 */
-      used[col]=1;
+      var row,col,ok=false;
+      for(var tr=0;tr<80&&!ok;tr++){
+        row=baseRow-Math.floor(Math.random()*maxRows);
+        col=Math.floor(Math.random()*5);
+        if((rowN[row]||0)>=MAX_PER_ROW)continue;
+        if(cell[row+'|'+col])continue;
+        /* 相邻行不同列：防上下同列成柱/成墙 */
+        if(cell[(row+1)+'|'+col]||cell[(row-1)+'|'+col])continue;
+        ok=true;
+      }
+      if(!ok){
+        /* 确定性补位扫描（dsh 建议）：保证 hard 高波次 n 全部落位 */
+        outer:
+        for(var rr=0;rr<maxRows+1;rr++){
+          for(var cc=0;cc<5;cc++){
+            row=baseRow-rr;col=cc;
+            if((rowN[row]||0)>=MAX_PER_ROW)continue;
+            if(cell[row+'|'+col])continue;
+            if(cell[(row+1)+'|'+col]||cell[(row-1)+'|'+col])continue;
+            ok=true;break outer;
+          }
+        }
+      }
+      if(!ok)continue;
+      cell[row+'|'+col]=1;rowN[row]=(rowN[row]||0)+1;placed++;
       var hp=diffCfg().d3hp(s.wave)+(Math.random()<0.3?1:0);
       var type='normal';
-      if(s.wave%3===0&&i===0)type='coco';
+      if(s.wave%3===0&&placed===1)type='coco';
       else if(Math.random()<(diffCfg().d3special+0.02))type='shell';
       else if(Math.random()<diffCfg().d3special)type='bottle';
       if(type==='shell')hp*=2;
       if(s.wave>=4&&Math.random()<diffCfg().d3special)type='hourglass';
-      s.blocks.push({col:col,row:(s.wave===1?0:-1)-Math.floor(i/3),hp:hp,type:type,x:0,y:undefined,w:0,h:0,dead:false,
-        bornT:0,spawnScale:0});   /* spawnScale 0→1 缩放入场 */
+      s.blocks.push({col:col,row:row,hp:hp,type:type,x:0,y:undefined,w:0,h:0,dead:false,
+        bornT:0,spawnScale:0});
     }
     /* 圆形障碍（海星浮标）：2-3 个，圆碰撞产生不可预测反弹 */
     s.bumpers=[];
     var nb=2+Math.floor(Math.random()*2);
     for(var b2=0;b2<nb;b2++){
       var mv=s.wave>=3&&b2===0;
-      s.bumpers.push({x:W*(0.2+Math.random()*0.6),y:H*0.28+Math.random()*H*0.3,r:22,
-        phase:Math.random()*7,mv:mv?0.06:0,dir:1});
+      /* dsh 3.3：浮标与已有砖块/浮标拒绝采样，避免重叠出生 */
+      var bx,by,okf=false;
+      for(var tf=0;tf<40&&!okf;tf++){
+        bx=W*(0.2+Math.random()*0.6); by=H*0.28+Math.random()*H*0.3;
+        var clashB=false;
+        for(var cbi=0;cbi<s.bumpers.length;cbi++){
+          if(Math.hypot(bx-s.bumpers[cbi].x,by-s.bumpers[cbi].y)<s.bumpers[cbi].r+22+8){clashB=true;break;}
+        }
+        if(clashB)continue;
+        for(var cbl=0;cbl<s.blocks.length;cbl++){
+          var bl2=s.blocks[cbl];
+          if(bl2.dead||bl2.y===undefined)continue;
+          var cx=Math.max(bl2.x,Math.min(bx,bl2.x+bl2.w));
+          var cy=Math.max(bl2.y,Math.min(by,bl2.y+bl2.h));
+          if(Math.hypot(bx-cx,by-cy)<22+6){clashB=true;break;}
+        }
+        if(!clashB)okf=true;
+      }
+      if(!okf)continue;  /* 无位则减配，不硬塞 */
+      s.bumpers.push({x:bx,y:by,r:22,phase:Math.random()*7,mv:mv?0.06:0,dir:1});
     }
     this.layout(s);},
   layout:function(s){
@@ -2187,7 +2228,8 @@ GAME[3]=function(){return{
       var roundHits=0;
       for(var rh=0;rh<s.lastRoundHits||0;rh++){}
       s.remain=0;
-      for(var d2=0;d2<s.blocks.length;d2++){ s.blocks[d2].row++; }
+      for(var d2=0;d2<s.blocks.length;d2++){ var rb=s.blocks[d2]; rb.row++;
+        if(s.blocks.some(function(ob){return ob!==rb&&!ob.dead&&ob.row===rb.row&&ob.col===rb.col;}))rb.row--; }
       s.blocks=s.blocks.filter(function(b){return b.row<13;});
       this.layout(s);
       /* 沙滩判定：砖块【视觉底边】压过 s.lineY + 6px 才算（线画哪判哪） */

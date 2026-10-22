@@ -150,7 +150,7 @@
 
 <!-- 选关 -->
 <div class="ov hidden" id="ovSelect">
-  <h1 style="font-size:24px;">🎮 纯游戏模式</h1>
+  <h1 style="font-size:24px;">🎮 游戏模式</h1>
   <p class="sub" style="margin-bottom:14px;">直接试玩任意关卡 · 无剧情 · 3 颗心</p>
   <div id="selBtns" style="display:flex;flex-direction:column;gap:12px;width:min(80vw,320px);">
     <button class="btn" id="selD1" style="display:flex;align-items:center;justify-content:center;gap:10px;">
@@ -225,8 +225,8 @@
   <p class="sub">晨市堆堆乐 · 深潜之约 · 夜市弹珠摊<br>一个关于海、打工与约定的狗狗夏日物语<br><span style="font-size:10px;opacity:.55;">v9.3</span></p>
   <button class="btn" id="btnStart">🌊 开始旅程</button>
   <button class="btn" id="btnResume" style="display:none;background:#bdeefa;color:#174766;">▶️ 继续上次进度</button>
-  <button class="btn ghost" id="btnStory" style="margin-top:10px;">📖 剧情模式 · 只看故事</button>
-  <button class="btn ghost" id="btnArcade" style="margin-top:10px;">🎮 纯游戏模式 · 选关试玩</button>
+  <button class="btn ghost" id="btnStory" style="display:none;margin-top:10px;">📖 剧情模式 · 只看故事</button>
+  <button class="btn ghost" id="btnArcade" style="display:none;margin-top:10px;">🎮 游戏模式 · 选关试玩</button>
 </div>
 
 <!-- 倒计时 -->
@@ -472,6 +472,12 @@ setTimeout(function(){
     },true);
   }
   if(ASSET.cover&&ASSET.cover.indexOf('__')!==0)$('coverPic').src=ASSET.cover;
+  /* V9.7：剧情模式 / 游戏模式按钮通关后才显示（老用户专享） */
+  try{
+    var cleared=localStorage.getItem('wave_clear')==='1';
+    $('btnStory').style.display=cleared?'block':'none';
+    $('btnArcade').style.display=cleared?'block':'none';
+  }catch(e){}
   try{ var sv=localStorage.getItem('wave_diff');
     if(sv){ difficulty=sv;
       document.querySelectorAll('.diffbtn').forEach(function(x){
@@ -1348,7 +1354,7 @@ GAME[2]=function(){return{
      */
     if(s.mode==='wait'){
       /*
-       * V9.20 提前结算：剧情/纯游戏模式分数已落袋达标（score>=goal）时，
+       * V9.20 提前结算：剧情/游戏模式分数已落袋达标（score>=goal）时，
        * 回船后不再强迫打满趟数——直接收工结算。
        * 无尽模式例外：必须打满趟数才换岗。
        * 深潜/上浮中途不打断（黄金矿工式玩法，半途消失很突兀）。
@@ -2979,7 +2985,7 @@ $('btnEndless').addEventListener('click',function(){
     running=false;hearts=3;starCount=0;cur=GAME[day]();state=cur;
     hideAll();hud(true,DAYS[day].tag,DAYS[day].how);
     $('btnQuitGame').style.display='block';
-    showChat([{w:'n',t:'（纯游戏模式 · '+DAYS[day].title+'）'}],{goLabel:'开始 ▸',onDone:function(){
+    showChat([{w:'n',t:'（游戏模式 · '+DAYS[day].title+'）'}],{goLabel:'开始 ▸',onDone:function(){
       hideAll();cur.init(state);paused=false;
       state._pendingStart=function(){ startLoop(); };
       startLoop();

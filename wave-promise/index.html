@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<!-- Wave Promise V9.6.2 reset-hook build 1792640925 -->
+<!-- Wave Promise V9.6.3 reset-confirm build 1792641190 -->
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -285,14 +285,40 @@
 </div>
 
 <script>
-/* V9.6.2 测试钩子：URL 带 ?reset 或 #reset → 清空全部进度回到新用户 */
+/* V9.6.3 测试钩子：URL 带 ?reset 或 #reset → 先弹二次确认，确认后才清空全部进度 */
 (function(){
   try{
-    if((location.search+location.hash).indexOf('reset')>=0){
+    if((location.search+location.hash).indexOf('reset')<0)return;
+    var ov=document.createElement('div');
+    ov.style.cssText='position:fixed;inset:0;z-index:99;background:rgba(23,71,102,.45);display:flex;align-items:center;justify-content:center;';
+    var card=document.createElement('div');
+    card.style.cssText='max-width:320px;width:86%;background:#f7fcff;border:2px solid #4f9fc0;border-radius:18px;padding:18px 20px;text-align:center;box-shadow:0 6px 0 #77b9d0,0 14px 30px rgba(36,126,164,.25);';
+    var t=document.createElement('div');
+    t.style.cssText='font-size:15px;font-weight:700;color:#174766;';
+    t.textContent='⚠️ 重置测试开关';
+    var d=document.createElement('div');
+    d.style.cssText='font-size:13px;color:#39708a;line-height:1.9;margin:8px 0 14px;';
+    d.textContent='将清空全部本地进度：通关记录、选关/无尽解锁、难度与卡牌。此操作不可撤销，确定回到新用户吗？';
+    var row=document.createElement('div');
+    row.style.cssText='display:flex;gap:10px;justify-content:center;';
+    var no=document.createElement('button');
+    no.textContent='取消';
+    no.style.cssText='flex:1;padding:11px 0;font-size:14px;font-weight:700;border-radius:14px;border:2px solid #4f9fc0;background:#dff2ff;color:#14506e;';
+    var yes=document.createElement('button');
+    yes.textContent='确认重置';
+    yes.style.cssText='flex:1;padding:11px 0;font-size:14px;font-weight:700;border-radius:14px;border:2px solid #c96e49;background:linear-gradient(180deg,#fff0b8,#ffad73);color:#71401f;';
+    row.appendChild(no);row.appendChild(yes);
+    card.appendChild(t);card.appendChild(d);card.appendChild(row);
+    ov.appendChild(card);document.body.appendChild(ov);
+    function dropParam(){ try{ history.replaceState(null,'',location.pathname); }catch(e){} }
+    function close(){ if(ov.parentNode)ov.parentNode.removeChild(ov); }
+    no.addEventListener('click',function(){ dropParam(); close(); });
+    yes.addEventListener('click',function(){
       var ks=[];
       for(var i=0;i<localStorage.length;i++){ var k=localStorage.key(i); if(k&&k.indexOf('wave_')===0)ks.push(k); }
       ks.forEach(function(k){ localStorage.removeItem(k); });
-    }
+      dropParam(); location.reload();
+    });
   }catch(e){}
 })();
 

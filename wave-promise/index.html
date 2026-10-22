@@ -222,7 +222,7 @@
 <div class="ov" id="ovCover">
   <img class="pic" id="coverPic" alt="">
   <h1>浪的约定</h1>
-  <p class="sub">晨市堆堆乐 · 深潜之约 · 夜市弹珠摊<br>一个关于海、打工与约定的狗狗夏日物语<br><span id="verTag" style="font-size:10px;opacity:0;transition:opacity .4s;">v9.8</span></p>
+  <p class="sub">晨市堆堆乐 · 深潜之约 · 夜市弹珠摊<br>一个关于海、打工与约定的狗狗夏日物语<br><span id="verTag" data-ver="V9.10.1" style="font-size:10px;opacity:0;transition:opacity .4s;">v9.10.1</span></p>
   <button class="btn" id="btnStart">🌊 开始旅程</button>
   <button class="btn" id="btnResume" style="display:none;background:#bdeefa;color:#174766;">▶️ 继续上次进度</button>
   <button class="btn ghost" id="btnStory" style="display:none;margin-top:10px;">📖 剧情模式 · 只看故事</button>
@@ -322,7 +322,11 @@
   }catch(e){}
 })();
 
-/* V9.8 版本号隐藏：双击或长按 600ms 显示，3 秒后淡出 */
+/* 版本号自动同步：以 data-ver 为准覆盖文本（防 HTML 与 JS 两处手工维护不同步） */
+  (function(){ try{ var t=document.getElementById('verTag');
+    if(t&&t.dataset&&t.dataset.ver)t.textContent='v'+t.dataset.ver.replace(/^V/,''); }catch(e){} })();
+
+  /* V9.8 版本号隐藏：双击或长按 600ms 显示，3 秒后淡出 */
 (function(){
   try{
     var tag=document.getElementById('verTag');

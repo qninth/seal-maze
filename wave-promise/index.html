@@ -1037,12 +1037,17 @@ var SUIKA_TYPES=[
   {n:'海龟',r:66,score:64,w:0,emoji:'🐢'},
   {n:'珍珠贝',r:80,score:128,w:0,emoji:'💎'}
 ];
-function pickType(unlockMax){
-  var pool=[],tw=0;
+function pickType(unlockMax,anti){
+  var pool=[],weights=[],tw=0;
   for(var i=0;i<Math.min(4,unlockMax+1);i++){ var t=SUIKA_TYPES[i];
-    if(t.w>0){ pool.push(i); tw+=t.w; } }
+    if(t.w>0){
+      /* 过度捕捞税：只在本函数内乘独立因子，绝不回写 SUIKA_TYPES 快照 */
+      var w=t.w;
+      if(anti&&i===anti.type)w*=Math.pow(0.45,anti.n||0);
+      pool.push(i);weights.push(w);tw+=w;
+    } }
   var r=Math.random()*tw;
-  for(var j=0;j<pool.length;j++){ r-=SUIKA_TYPES[pool[j]].w;
+  for(var j=0;j<pool.length;j++){ r-=weights[j];
     if(r<=0)return pool[j]; }
   return pool[0];
 }
@@ -1050,7 +1055,8 @@ GAME[1]=function(){return{
   goalLabel:'🐟 0 / 150',fi:0,starGoal:150,
   init:function(s){
     s.items=[];s.score=0;s.fi=0;s.done=false;s.dolT=0;
-    s.cur=pickType(1);s.next=pickType(1);s.cool=0;s.curX=0.5;
+    s.antiSpam={type:-1,n:0,warned:false};s.heat={x:-1,n:0};s.lastDropT=performance.now();
+    s.cur=pickType(1,s.antiSpam);s.next=pickType(1,s.antiSpam);s.cool=0;s.curX=0.5;
     s.unlockMax=1;s.startT=performance.now();
     s.basketL=W*0.05;s.basketR=W*0.95;s.lineY=H*diffCfg().d1Line;
     s.overT=0;
@@ -1069,6 +1075,10 @@ GAME[1]=function(){return{
     fxFloat(W/2,H*0.32,'📢 今日鱼市：'+s.market.name,'#ffd166');},
   update:function(dt,t,s){
     if(s.done&&t-s.dolT>1.2){ finishWin();return; }
+    /* 热度随时间衰减：停手 2.5s 后每秒减半，避免漂移永久惩罚 */
+    if(s.heat&&s.heat.n>0&&s.lastDropT&&t-s.lastDropT>2500&&t-(s.heatTickT||0)>1000){
+      s.heat.n=Math.floor(s.heat.n/2);s.heatTickT=t;
+    }
     if(s.cool>0){ s.cool-=dt; }
     if(s.comboT>0){ s.comboT-=dt; if(s.comboT<=0)s.comboN=0; }
     if((s.comboN||0)>=3&&t-(s.comboBannerT||0)>2){ s.comboBannerT=t;
@@ -1079,10 +1089,24 @@ GAME[1]=function(){return{
     if(touchDown&&s.cool<=0){ s.curX=touchX; s.holding=true; }
     if(!touchDown&&s.holding&&s.cool<=0){
       /* 松手落下 */
+      if(!s.antiSpam)s.antiSpam={type:-1,n:0,warned:false};
+      if(!s.heat)s.heat={x:-1,n:0};
+      var baseX=(s.curX||0.5);
+      /* 落点漂移：同点连放累积热度，抖动只改实际入篮 x，不动准星 s.curX */
+      if(Math.abs(baseX-s.heat.x)<0.06)s.heat.n++;
+      else s.heat={x:baseX,n:0};
+      var drift=(Math.random()-0.5)*Math.min(0.12,(s.heat.n||0)*0.02);
+      var dropX=baseX+drift;
       var T=SUIKA_TYPES[s.cur];
-      s.items.push({type:s.cur,x:(s.curX||0.5)*W,y:H*0.1,r:T.r,vx:0,vy:0,dead:false});
+      s.items.push({type:s.cur,x:dropX*W,y:H*0.1,r:T.r,vx:0,vy:0,dead:false});
       s.holding=false;s.cool=0.35;
-      var tmp=s.cur;s.cur=s.next;s.next=pickType(s.unlockMax);
+      /* 过度捕捞税：连续同种计数，换种即重置；第 3 连轻提示一次 */
+      if(s.cur===s.antiSpam.type)s.antiSpam.n++;
+      else s.antiSpam={type:s.cur,n:0,warned:false};
+      if(s.antiSpam.n>=2&&!s.antiSpam.warned){s.antiSpam.warned=true;
+        fxFloat((s.curX||0.5)*W,H*0.2,SUIKA_TYPES[s.cur].n+'有点缺货了，换换口味？','#ffd166');}
+      s.lastDropT=t;
+      var tmp=s.cur;s.cur=s.next;s.next=pickType(s.unlockMax,s.antiSpam);
     }
     var n=s.items.length;
     /* 空间剪枝：按 x 排序后内层循环可提前退出（O(n²)→近 O(n)） */
@@ -1217,6 +1241,10 @@ push=Math.min(push,12);                       /* 单帧最多推开 12px，防�
       X.fillText(SUIKA_TYPES[it.type].emoji,it.x,it.y); }
     if(s.cool<=0){
       var cx=(s.curX||0.5)*W;
+      /* 热度视觉暗示：只晃准星显示位置，最多 8px，不参与落点判定 */
+      if(s.heat&&s.heat.n>=3){
+        cx+=Math.min(8,(s.heat.n-2)*1.5)*Math.sin(t*0.02);
+      }
       if(s.cardPrev){ X.font='11px sans-serif';X.fillStyle='rgba(255,209,102,.95)';X.textAlign='center';
         X.fillText('▼ 即将投放',cx,H*0.052); }
       X.font=(SUIKA_TYPES[s.cur].r*1.4)+'px serif';X.textAlign='center';X.textBaseline='middle';

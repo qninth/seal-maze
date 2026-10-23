@@ -1,10 +1,10 @@
 {
   "version": "1.1.11",
-  "createdAt": "2026-10-23T05:47:28Z",
+  "createdAt": "2026-10-23T06:15:36Z",
   "minShellVersion": "1.0.0",
   "archive": {
     "url": "https://qninth.github.io/seal-maze/ota/bundle-1.1.11.tar.gz",
-    "sha256": "9555dffb41be50cc6c0ec16ac88b5b0c749b071b10294a7e86764d086d2c62f4",
+    "sha256": "48aa0465c7f793cd73bf2506431a455a50d5d41da2ddeab0b3255b78a6a4d5ee",
     "size": 73526
   }
 }

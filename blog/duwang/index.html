@@ -66,6 +66,11 @@ ol.tao li::before{content:"「"counter(tao)"」";position:absolute;left:0;color:
   .wrap{padding:44px 18px 64px}
   blockquote{padding:12px 14px}
 }
+.restore-tip{
+  position:fixed;left:50%;bottom:28px;transform:translateX(-50%);
+  background:rgba(43,38,32,.85);color:#E8E0CE;font-size:13px;letter-spacing:.08em;
+  padding:8px 18px;z-index:50;display:none;
+}
 </style>
 </head>
 <body>
@@ -201,5 +206,31 @@ ol.tao li::before{content:"「"counter(tao)"」";position:absolute;left:0;color:
   </div>
 
 </div>
+<div class="restore-tip" id="restoreTip">已回到上次阅读位置</div>
+<script>
+(function(){
+  var KEY='duwang-devlog01-scroll';
+  var saved=parseInt(localStorage.getItem(KEY)||'0',10);
+  var tipEl=document.getElementById('restoreTip');
+  var tipTimer=null;
+  function showTip(){
+    tipEl.style.display='block';
+    if(tipTimer)clearTimeout(tipTimer);
+    tipTimer=setTimeout(function(){tipEl.style.display='none';},2000);
+  }
+  function savePos(){try{localStorage.setItem(KEY,window.scrollY);}catch(e){}}
+  // 回到上次位置
+  if(saved>200){
+    window.addEventListener('load',function(){
+      window.scrollTo(0,saved);showTip();
+    });
+  }
+  var t=null;
+  window.addEventListener('scroll',function(){
+    if(t)clearTimeout(t);
+    t=setTimeout(savePos,300);
+  },{passive:true});
+})();
+</script>
 </body>
 </html>
